@@ -3,9 +3,50 @@ from typing import Optional
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+from discord.ui import View, Button
 import os
 
 SOUNDS_DIR: str = "sounds/"
+
+
+class SoundboardView(View):
+    def __init__(self, bot: commands.Bot, sounds: dict):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.sounds = sounds
+
+        for sound_name in sounds.keys():
+            button = Button(label=sound_name, custom_id=sound_name)
+            button.callback = self.create_callback(sound_name)
+            self.add_item(button)
+
+    def create_callback(self, sound_name):
+        async def callback(interaction: discord.Interaction):
+
+            sound_path = self.sounds.get(sound_name)
+            if not sound_path:
+                await interaction.response.send_message("Sound does not exist.", ephemeral=True)
+                return
+
+            if not interaction.guild.voice_client:
+                if interaction.user.voice:
+                    channel = interaction.user.voice.channel
+                    await channel.connect()
+                else:
+                    await interaction.response.send_message("You are not in a voice channel.", ephemeral=True)
+                    return
+
+            source = discord.FFmpegPCMAudio(sound_path)
+            if not interaction.guild.voice_client.is_playing():
+                interaction.guild.voice_client.play(source)
+                await interaction.response.defer()
+            else:
+                await interaction.response.send_message(
+                    "Playing a sound, wait for it to finish.", ephemeral=True
+                )
+
+        return callback
+
 
 class DiscordBot(commands.Bot):
     config: dict
@@ -16,54 +57,66 @@ class DiscordBot(commands.Bot):
         self.config = config
         self.register_commands()
 
+    async def setup_hook(self):
+        return await self.tree.sync()
+
     async def on_ready(self) -> None:
         print(f"Logged in as {self.user}")
 
-
     def register_commands(self) -> None:
 
-        @commands.command(name="join")
-        async def join(ctx: Context) -> None:
-            if ctx.author.voice:
-                channel = ctx.author.voice.channel
+        @self.tree.command(name="join", description="Joins a Discord chat voice")
+        async def join(interaction: discord.Interaction) -> None:
+            if interaction.user.voice:  # Changed from ctx.author
+                channel = interaction.user.voice.channel
+
                 await channel.connect()
+                await interaction.response.send_message("Connected!", ephemeral=True)
             else:
-                await ctx.send("You are not connected to a voice channel.")
+                await interaction.response.send_message("You're not connected to a voice channel", ephemeral=True)
 
-        @commands.command(name="leave")
-        async def leave(ctx: Context) -> None:
-            if ctx.voice_client:
-                await ctx.voice_client.disconnect()
+        @self.tree.command(name="leave", description="Leave a Discord chat voice")
+        async def leave(interaction: discord.Interaction) -> None:
+            if interaction.guild.voice_client:
+                await interaction.guild.voice_client.disconnect()
+                await interaction.response.send_message("Disconnected!", ephemeral=True)
             else:
-                await ctx.send("No estoy en un canal de voz.")
+                await interaction.response.send_message("Not in a voice channel", ephemeral=True)
 
-        @commands.command(name="play")
-        async def play(ctx: Context, sound: str) -> None:
-            if not ctx.voice_client:
-                await join(ctx)
+        @self.tree.command(name="play", description="Play a saved sound")
+        async def play(interaction: discord.Interaction, sound: str) -> None:
+            if not interaction.guild.voice_client:
+                await join(interaction)
+
             sound_path = self.find_sound(sound)
             if sound_path:
                 source = discord.FFmpegPCMAudio(sound_path)
-                ctx.voice_client.play(source)
+                interaction.guild.voice_client.play(source)
+                await interaction.response.send_message(f"Playing: {sound}", ephemeral=True)
             else:
-                await ctx.send("Ese sonido no existe.")
+                await interaction.response.send_message("Sound not found", ephemeral=True)
 
-        @commands.command(name="upload")
-        async def upload(ctx: Context) -> None:
-            if not ctx.message.attachments:
-                await ctx.send("Attach audio file.")
+        @self.tree.command(name="upload", description="Upload a sound file (optional: give a name")
+        async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
+                         sound_name: str = None) -> None:
+            if not attachment.filename.lower().endswith((".mp3", ".wav", ".ogg")):
+                await interaction.response.send_message("Unsupported format (.mp3, .wav, .ogg)", ephemeral=True)
                 return
 
-            for attachment in ctx.message.attachments:
-                if attachment.filename.endswith((".mp3", ".wav", ".ogg")):
-                    save_path = os.path.join(SOUNDS_DIR, attachment.filename)
-                    await attachment.save(save_path)
-                else:
-                    await ctx.send("Audio file not supported -> (.mp3, .wav, .ogg).")
+            if sound_name:
+                extension = attachment.filename.rsplit(".", maxsplit=1)[-1]
+                save_path = os.path.join(SOUNDS_DIR, f"{sound_name}.{extension}")
+            else:
+                save_path = os.path.join(SOUNDS_DIR, attachment.filename)
+            await attachment.save(save_path)
+            await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
 
-        self.add_command(join)
-        self.add_command(leave)
-        self.add_command(play)
+        @self.tree.command(name="soundboard", description="Open a soundboard")
+        async def soundboard(interaction: discord.Interaction) -> None:
+            sounds = self.get_sounds_dict(SOUNDS_DIR)
+
+            view = SoundboardView(self, sounds)
+            await interaction.response.send_message("Soundboard activado:", view=view)
 
     @staticmethod
     def find_sound(filename: str) -> Optional[str]:
@@ -71,8 +124,23 @@ class DiscordBot(commands.Bot):
             (os.path.join(SOUNDS_DIR, file) for file in os.listdir(SOUNDS_DIR)
              if os.path.splitext(file)[0] == filename), None)
 
+    @staticmethod
+    def get_sounds_dict(path: str) -> dict:
+        if not os.path.isdir(path):
+            raise ValueError(f"Path is not valid: {path}")
+
+        sound_dict = {}
+        for sound in os.listdir(path):
+            ruta_completa = os.path.join(path, sound)
+            if os.path.isfile(ruta_completa):
+                nombre_sin_extension, _ = os.path.splitext(sound)
+                sound_dict[nombre_sin_extension] = ruta_completa
+        return sound_dict
+
+
 if __name__ == '__main__':
     from dotenv import load_dotenv
+
     load_dotenv()
 
     TOKEN = str(os.getenv("DISCORD_TOKEN"))
