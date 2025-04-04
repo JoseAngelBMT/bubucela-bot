@@ -126,7 +126,7 @@ class DiscordBot(commands.Bot):
         async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
                          sound_name: str = None) -> None:
             sounds = self.get_sounds_dict(self.sounds_dir)
-            if len(sounds) >= self.config["MAX_SOUNDS"]:
+            if len(sounds) >= int(self.config["MAX_SOUNDS"]):
                 await interaction.response.send_message("Max sounds reached.", ephemeral=True)
                 return
 
