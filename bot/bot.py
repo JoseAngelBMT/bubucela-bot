@@ -10,44 +10,55 @@ SOUNDS_DIR: str = "sounds/"
 
 
 class SoundboardView(View):
-    def __init__(self, bot: commands.Bot, sounds: dict):
+    def __init__(self, bot: commands.Bot, sounds: dict, mode: str = "play"):
         super().__init__(timeout=None)
         self.bot = bot
         self.sounds = sounds
+        self.mode = mode
 
         for sound_name in sounds.keys():
-            button = Button(label=sound_name, custom_id=sound_name)
+            button = Button(label=sound_name, custom_id=sound_name,
+                            style=discord.ButtonStyle.danger if mode == "delete" else discord.ButtonStyle.secondary)
             button.callback = self.create_callback(sound_name)
             self.add_item(button)
 
     def create_callback(self, sound_name: str):
         async def callback(interaction: discord.Interaction):
-            if interaction.guild.voice_client is None:
-                if interaction.user.voice and interaction.user.voice.channel:
-                    channel = interaction.user.voice.channel
-                    await channel.connect()
+            if self.mode == "play":
+                if interaction.guild.voice_client is None:
+                    if interaction.user.voice and interaction.user.voice.channel:
+                        channel = interaction.user.voice.channel
+                        await channel.connect()
 
-            sound_path = self.sounds.get(sound_name)
-            if not sound_path:
-                await interaction.response.send_message("Sound does not exist.", ephemeral=True)
-                return
-
-            if not interaction.guild.voice_client:
-                if interaction.user.voice:
-                    channel = interaction.user.voice.channel
-                    await channel.connect()
-                else:
-                    await interaction.response.send_message("You are not in a voice channel.", ephemeral=True)
+                sound_path = self.sounds.get(sound_name)
+                if not sound_path:
+                    await interaction.response.send_message("Sound does not exist.", ephemeral=True)
                     return
 
-            source = discord.FFmpegPCMAudio(sound_path)
-            if not interaction.guild.voice_client.is_playing():
-                interaction.guild.voice_client.play(source)
-                await interaction.response.defer()
-            else:
-                await interaction.response.send_message(
-                    "Playing a sound, wait for it to finish.", ephemeral=True
-                )
+                if not interaction.guild.voice_client:
+                    if interaction.user.voice:
+                        channel = interaction.user.voice.channel
+                        await channel.connect()
+                    else:
+                        await interaction.response.send_message("You are not in a voice channel.", ephemeral=True)
+                        return
+
+                source = discord.FFmpegPCMAudio(sound_path)
+                if not interaction.guild.voice_client.is_playing():
+                    interaction.guild.voice_client.play(source)
+                    await interaction.response.defer()
+                else:
+                    await interaction.response.send_message(
+                        "Playing a sound, wait for it to finish.", ephemeral=True
+                    )
+            elif self.mode == "delete":
+                sound_path = self.sounds.get(sound_name)
+                if sound_path and os.path.exists(sound_path):
+                    os.remove(sound_path)
+                    await interaction.response.send_message(f"Removed sound {sound_name}.", ephemeral=True)
+                else:
+                    interaction.response.send_message(f"Sound {sound_name} does not exist or already eliminated.",
+                                                      ephemeral=True)
 
         return callback
 
@@ -82,7 +93,7 @@ class DiscordBot(commands.Bot):
         @self.tree.command(name="leave", description="Leave a Discord chat voice")
         async def leave(interaction: discord.Interaction) -> None:
             if interaction.guild.voice_client:
-                await interaction.guild.voice_client.disconnect()
+                await interaction.guild.voice_client.disconnect(force=True)
                 await interaction.response.send_message("Disconnected!", ephemeral=True)
             else:
                 await interaction.response.send_message("Not in a voice channel", ephemeral=True)
@@ -129,9 +140,22 @@ class DiscordBot(commands.Bot):
         @self.tree.command(name="soundboard", description="Open a soundboard")
         async def soundboard(interaction: discord.Interaction) -> None:
             sounds = self.get_sounds_dict(SOUNDS_DIR)
-
+            if not sounds:
+                await interaction.response.send_message("No sounds found.", ephemeral=True)
+                return
             view = SoundboardView(self, sounds)
-            await interaction.response.send_message("Soundboard activado:", view=view)
+            await interaction.response.send_message("Soundboard activated:", view=view)
+
+        @self.tree.command(name="delete", description="Delete a sound")
+        async def delete(interaction: discord.Interaction) -> None:
+            sounds = self.get_sounds_dict(SOUNDS_DIR)
+
+            if not sounds:
+                await interaction.response.send_message("No sounds found.", ephemeral=True)
+                return
+
+            view = SoundboardView(self, sounds, mode="delete")
+            await interaction.response.send_message("Select a sound:", view=view, ephemeral=True)
 
     @staticmethod
     def find_sound(filename: str) -> Optional[str]:
@@ -151,10 +175,6 @@ class DiscordBot(commands.Bot):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = ruta_completa
         return sound_dict
-
-    def remove_sound(self, sound_name: str) -> None:
-        path = self.find_sound(sound_name)
-        os.remove(path)
 
 
 if __name__ == '__main__':
