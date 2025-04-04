@@ -22,6 +22,10 @@ class SoundboardView(View):
 
     def create_callback(self, sound_name):
         async def callback(interaction: discord.Interaction):
+            if interaction.guild.voice_client is None:
+                if interaction.user.voice and interaction.user.voice.channel:
+                    channel = interaction.user.voice.channel
+                    await channel.connect()
 
             sound_path = self.sounds.get(sound_name)
             if not sound_path:
@@ -67,7 +71,7 @@ class DiscordBot(commands.Bot):
 
         @self.tree.command(name="join", description="Joins a Discord chat voice")
         async def join(interaction: discord.Interaction) -> None:
-            if interaction.user.voice:  # Changed from ctx.author
+            if interaction.user.voice:
                 channel = interaction.user.voice.channel
 
                 await channel.connect()
@@ -95,6 +99,17 @@ class DiscordBot(commands.Bot):
                 await interaction.response.send_message(f"Playing: {sound}", ephemeral=True)
             else:
                 await interaction.response.send_message("Sound not found", ephemeral=True)
+
+        @self.tree.command(name="stop", description="Stop playing sound")
+        async def stop(interaction: discord.Interaction):
+            voice_client = interaction.guild.voice_client
+            if voice_client and voice_client.is_playing():
+                voice_client.stop()
+                await interaction.response.send_message("Stopped.", ephemeral=True)
+            elif voice_client:
+                await interaction.response.send_message("Nothing playing.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Bot not in a voice channel.", ephemeral=True)
 
         @self.tree.command(name="upload", description="Upload a sound file (optional: give a name")
         async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
@@ -136,6 +151,10 @@ class DiscordBot(commands.Bot):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = ruta_completa
         return sound_dict
+
+    def remove_sound(self, sound_name: str) -> None:
+        path = self.find_sound(sound_name)
+        os.remove(path)
 
 
 if __name__ == '__main__':
