@@ -1,12 +1,11 @@
 from typing import Optional
+from dotenv import dotenv_values
+import os
 
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord.ui import View, Button
-import os
-
-SOUNDS_DIR: str = "sounds/"
 
 
 class SoundboardView(View):
@@ -67,9 +66,10 @@ class DiscordBot(commands.Bot):
     config: dict
 
     def __init__(self, config: dict) -> None:
-        super().__init__(command_prefix=config["prefix"],
+        super().__init__(command_prefix=config["DISCORD_PREFIX"],
                          intents=discord.Intents.all())
         self.config = config
+        self.sounds_dir = config["SOUNDS_DIR"]
         self.register_commands()
 
     async def setup_hook(self):
@@ -125,21 +125,26 @@ class DiscordBot(commands.Bot):
         @self.tree.command(name="upload", description="Upload a sound file (optional: give a name")
         async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
                          sound_name: str = None) -> None:
+            sounds = self.get_sounds_dict(self.sounds_dir)
+            if len(sounds) >= self.config["MAX_SOUNDS"]:
+                await interaction.response.send_message("Max sounds reached.", ephemeral=True)
+                return
+
             if not attachment.filename.lower().endswith((".mp3", ".wav", ".ogg")):
                 await interaction.response.send_message("Unsupported format (.mp3, .wav, .ogg)", ephemeral=True)
                 return
 
             if sound_name:
                 extension = attachment.filename.rsplit(".", maxsplit=1)[-1]
-                save_path = os.path.join(SOUNDS_DIR, f"{sound_name}.{extension}")
+                save_path = os.path.join(self.sounds_dir, f"{sound_name}.{extension}")
             else:
-                save_path = os.path.join(SOUNDS_DIR, attachment.filename)
+                save_path = os.path.join(self.sounds_dir, attachment.filename)
             await attachment.save(save_path)
             await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
 
         @self.tree.command(name="soundboard", description="Open a soundboard")
         async def soundboard(interaction: discord.Interaction) -> None:
-            sounds = self.get_sounds_dict(SOUNDS_DIR)
+            sounds = self.get_sounds_dict(self.sounds_dir)
             if not sounds:
                 await interaction.response.send_message("No sounds found.", ephemeral=True)
                 return
@@ -148,7 +153,7 @@ class DiscordBot(commands.Bot):
 
         @self.tree.command(name="delete", description="Delete a sound")
         async def delete(interaction: discord.Interaction) -> None:
-            sounds = self.get_sounds_dict(SOUNDS_DIR)
+            sounds = self.get_sounds_dict(self.sounds_dir)
 
             if not sounds:
                 await interaction.response.send_message("No sounds found.", ephemeral=True)
@@ -160,7 +165,7 @@ class DiscordBot(commands.Bot):
     @staticmethod
     def find_sound(filename: str) -> Optional[str]:
         return next(
-            (os.path.join(SOUNDS_DIR, file) for file in os.listdir(SOUNDS_DIR)
+            (os.path.join(self.sounds_dir, file) for file in os.listdir(self.sounds_dir)
              if os.path.splitext(file)[0] == filename), None)
 
     @staticmethod
@@ -170,24 +175,19 @@ class DiscordBot(commands.Bot):
 
         sound_dict = {}
         for sound in os.listdir(path):
-            ruta_completa = os.path.join(path, sound)
-            if os.path.isfile(ruta_completa):
+            root = os.path.join(path, sound)
+            if os.path.isfile(root):
                 nombre_sin_extension, _ = os.path.splitext(sound)
-                sound_dict[nombre_sin_extension] = ruta_completa
+                sound_dict[nombre_sin_extension] = root
         return sound_dict
 
 
 if __name__ == '__main__':
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    config = {"prefix": os.getenv("DISCORD_PREFIX"),
-              "token": os.getenv("DISCORD_TOKEN")}
+    config = dotenv_values(".env")
 
     try:
         bot = DiscordBot(config)
-        bot.run(config["token"])
+        bot.run(config["DISCORD_TOKEN"])
     except Exception as e:
         print(f"Error: {e}")
         raise
