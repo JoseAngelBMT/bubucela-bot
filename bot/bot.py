@@ -20,7 +20,7 @@ class SoundboardView(View):
             button.callback = self.create_callback(sound_name)
             self.add_item(button)
 
-    def create_callback(self, sound_name):
+    def create_callback(self, sound_name: str):
         async def callback(interaction: discord.Interaction):
             if interaction.guild.voice_client is None:
                 if interaction.user.voice and interaction.user.voice.channel:
@@ -56,7 +56,7 @@ class DiscordBot(commands.Bot):
     config: dict
 
     def __init__(self, config: dict) -> None:
-        super().__init__(command_prefix="/",
+        super().__init__(command_prefix=config["prefix"],
                          intents=discord.Intents.all())
         self.config = config
         self.register_commands()
@@ -162,14 +162,12 @@ if __name__ == '__main__':
 
     load_dotenv()
 
-    TOKEN = str(os.getenv("DISCORD_TOKEN"))
-    PREFIX = os.getenv("DISCORD_PREFIX")
-    MODEL = os.getenv("MODEL_NAME")
-    PROMPT = os.getenv("PROMPT")
+    config = {"prefix": os.getenv("DISCORD_PREFIX"),
+              "token": os.getenv("DISCORD_TOKEN")}
 
     try:
-        bot = DiscordBot(PREFIX)
-        bot.run(TOKEN)
+        bot = DiscordBot(config)
+        bot.run(config["token"])
     except Exception as e:
         print(f"Error: {e}")
         raise
