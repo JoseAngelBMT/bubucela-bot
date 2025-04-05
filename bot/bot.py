@@ -130,7 +130,7 @@ class DiscordBot(commands.Bot):
                 await interaction.response.send_message("Max sounds reached.", ephemeral=True)
                 return
 
-            if attachment.size > int(self.config["MAX_FILE_SIZE_MB"]):
+            if attachment.size / (1024 * 1024) > int(self.config["MAX_FILE_SIZE_MB"]):
                 await interaction.response.send_message(
                     f"File exceeds max size of {self.config['MAX_FILE_SIZE_MB']} MB.", ephemeral=True)
                 return
