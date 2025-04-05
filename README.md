@@ -40,13 +40,13 @@ MAX_FILE_SIZE_MB=5
 3. Sound Files Directory: Prepare a directory for storing sound files (e.g., sounds/).
 
 ## Docker Setup
-###Build the Docker Image:
+### Build the Docker Image:
 ```bash
 docker build -t <custom-bot-name> .
 ```
 Replace <custom-bot-name> with your preferred name for the Docker image.
 
-###Run the Docker Container:
+### Run the Docker Container:
 ```bash
 docker run -d --restart unless-stopped --env-file .env -v $(pwd)/sounds/:/sounds/ <custom-bot-name>
 ```
