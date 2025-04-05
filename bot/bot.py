@@ -130,6 +130,11 @@ class DiscordBot(commands.Bot):
                 await interaction.response.send_message("Max sounds reached.", ephemeral=True)
                 return
 
+            if attachment.size > self.config["MAX_FILE_SIZE_MB"]:
+                await interaction.response.send_message(
+                    f"File exceeds max size of {self.config['MAX_FILE_SIZE_MB']} MB.", ephemeral=True)
+                return
+
             if not attachment.filename.lower().endswith((".mp3", ".wav", ".ogg")):
                 await interaction.response.send_message("Unsupported format (.mp3, .wav, .ogg)", ephemeral=True)
                 return
@@ -162,8 +167,7 @@ class DiscordBot(commands.Bot):
             view = SoundboardView(self, sounds, mode="delete")
             await interaction.response.send_message("Select a sound:", view=view, ephemeral=True)
 
-    @staticmethod
-    def find_sound(filename: str) -> Optional[str]:
+    def find_sound(self, filename: str) -> Optional[str]:
         return next(
             (os.path.join(self.sounds_dir, file) for file in os.listdir(self.sounds_dir)
              if os.path.splitext(file)[0] == filename), None)
