@@ -1,6 +1,7 @@
 from typing import Optional
 from dotenv import dotenv_values
 import os
+from itertools import batched
 
 import discord
 from discord.ext import commands
@@ -9,17 +10,60 @@ from discord.ui import View, Button
 
 
 class SoundboardView(View):
-    def __init__(self, bot: commands.Bot, sounds: dict, mode: str = "play"):
+    sounds_per_page: int = 20
+
+    def __init__(self, bot: commands.Bot, sounds: dict, mode: str = "play", page: int = 0):
         super().__init__(timeout=None)
         self.bot = bot
         self.sounds = sounds
         self.mode = mode
+        self.page = page
+        self.total_pages = (len(sounds) - 1) // self.sounds_per_page
 
-        for sound_name in sounds.keys():
-            button = Button(label=sound_name, custom_id=sound_name,
-                            style=discord.ButtonStyle.danger if mode == "delete" else discord.ButtonStyle.secondary)
+        self.update_buttons()
+
+    def get_current_page_sounds(self) -> list:
+        start = self.page * self.sounds_per_page
+        end = start + self.sounds_per_page
+        return list(self.sounds.keys())[start:end]
+
+    def update_buttons(self):
+        self.clear_items()
+
+        current_sounds = self.get_current_page_sounds()
+        for sound_name in current_sounds:
+            button = discord.ui.Button(label=sound_name[:self.sounds_per_page],
+                                       custom_id=sound_name[:self.sounds_per_page],
+                                       style=discord.ButtonStyle.danger if self.mode == "delete"
+                                       else discord.ButtonStyle.gray)
             button.callback = self.create_callback(sound_name)
             self.add_item(button)
+
+        if self.total_pages > 0:
+            nav_buttons = [
+                ("◀️", self.previous_page),
+                (f"Page {self.page + 1}/{self.total_pages + 1}", self.noop),
+                ("▶️", self.next_page)
+            ]
+
+            for (emoji, action) in nav_buttons:
+                button = discord.ui.Button(label=emoji,
+                                           style=discord.ButtonStyle.primary)
+                button.callback = action
+                self.add_item(button)
+
+    async def noop(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
+    async def previous_page(self, interaction: discord.Interaction):
+        self.page = max(0, self.page - 1)
+        self.update_buttons()
+        await interaction.response.edit_message(view=self)
+
+    async def next_page(self, interaction: discord.Interaction):
+        self.page = min(self.total_pages, self.page + 1)
+        self.update_buttons()
+        await interaction.response.edit_message(view=self)
 
     def create_callback(self, sound_name: str):
         async def callback(interaction: discord.Interaction):
