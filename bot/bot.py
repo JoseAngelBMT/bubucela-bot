@@ -89,11 +89,10 @@ class SoundboardView(View):
                 source = discord.FFmpegPCMAudio(sound_path)
                 if not interaction.guild.voice_client.is_playing():
                     interaction.guild.voice_client.play(source)
-                    await interaction.response.defer()
                 else:
-                    await interaction.response.send_message(
-                        "Playing a sound, wait for it to finish.", ephemeral=True
-                    )
+                    interaction.guild.voice_client.stop()
+                    interaction.guild.voice_client.play(source)
+                await interaction.response.defer()
             elif self.mode == "delete":
                 sound_path = self.sounds.get(sound_name)
                 if sound_path and os.path.exists(sound_path):
