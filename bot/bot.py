@@ -107,6 +107,7 @@ class SoundboardView(View):
 
 class DiscordBot(commands.Bot):
     config: dict
+    sound_formats: list[str] = [".mp3", ".wav", ".ogg", ".opus"]
 
     def __init__(self, config: dict) -> None:
         super().__init__(command_prefix=config["DISCORD_PREFIX"],
@@ -178,8 +179,8 @@ class DiscordBot(commands.Bot):
                     f"File exceeds max size of {self.config['MAX_FILE_SIZE_MB']} MB.", ephemeral=True)
                 return
 
-            if not attachment.filename.lower().endswith((".mp3", ".wav", ".ogg")):
-                await interaction.response.send_message("Unsupported format (.mp3, .wav, .ogg)", ephemeral=True)
+            if not attachment.filename.lower().endswith(tuple(self.sound_formats)):
+                await interaction.response.send_message(f"Unsupported format {self.sound_formats}", ephemeral=True)
                 return
 
             if sound_name:
