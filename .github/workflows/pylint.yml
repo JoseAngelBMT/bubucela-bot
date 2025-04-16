@@ -20,7 +20,6 @@ jobs:
         source venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pylint
     - name: Run pylint inside venv
       run: |
         source venv/bin/activate

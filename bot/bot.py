@@ -1,20 +1,18 @@
+import os
 from typing import Optional
 from dotenv import dotenv_values
-import os
-from itertools import batched
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import Context
-from discord.ui import View, Button
+from discord.ui import View
 
 
 class SoundboardView(View):
     sounds_per_page: int = 20
 
-    def __init__(self, bot: commands.Bot, sounds: dict, mode: str = "play", page: int = 0):
+    def __init__(self, discord_bot: commands.Bot, sounds: dict, mode: str = "play", page: int = 0):
         super().__init__(timeout=None)
-        self.bot = bot
+        self.bot = discord_bot
         self.sounds = sounds
         self.mode = mode
         self.page = page
@@ -109,11 +107,11 @@ class DiscordBot(commands.Bot):
     config: dict
     sound_formats: list[str] = [".mp3", ".wav", ".ogg", ".opus"]
 
-    def __init__(self, config: dict) -> None:
-        super().__init__(command_prefix=config["DISCORD_PREFIX"],
+    def __init__(self, config_venv: dict) -> None:
+        super().__init__(command_prefix=config_venv["DISCORD_PREFIX"],
                          intents=discord.Intents.all())
-        self.config = config
-        self.sounds_dir = config["SOUNDS_DIR"]
+        self.config = config_venv
+        self.sounds_dir = config_venv["SOUNDS_DIR"]
         self.register_commands()
 
     async def setup_hook(self):
@@ -122,7 +120,7 @@ class DiscordBot(commands.Bot):
     async def on_ready(self) -> None:
         print(f"Logged in as {self.user}")
 
-    def register_commands(self) -> None:
+    def register_commands(self) -> None: # pylint: disable=too-many-statements
 
         @self.tree.command(name="join", description="Joins a Discord chat voice")
         async def join(interaction: discord.Interaction) -> None:
