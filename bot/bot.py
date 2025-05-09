@@ -3,7 +3,7 @@ from typing import Optional
 from dotenv import dotenv_values
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import View
 
 
@@ -119,8 +119,19 @@ class DiscordBot(commands.Bot):
 
     async def on_ready(self) -> None:
         print(f"Logged in as {self.user}")
+        if not self.check_voice_channel.is_running():
+            self.check_voice_channel.start()
 
-    def register_commands(self) -> None: # pylint: disable=too-many-statements
+    @tasks.loop(minutes=5)
+    async def check_voice_channel(self) -> None:
+        for vc in self.voice_clients:
+            channel = vc.channel
+            if channel is not None:
+                non_bot_members = [m for m in channel.members if not m.bot]
+                if len(non_bot_members) == 0:
+                    await vc.disconnect(force=True)
+
+    def register_commands(self) -> None:  # pylint: disable=too-many-statements
 
         @self.tree.command(name="join", description="Joins a Discord chat voice")
         async def join(interaction: discord.Interaction) -> None:
