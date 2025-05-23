@@ -5,6 +5,7 @@ from dotenv import dotenv_values
 import discord
 from discord.ext import commands, tasks
 from discord.ui import View
+from pydub import AudioSegment
 
 
 class SoundboardView(View):
@@ -177,7 +178,8 @@ class DiscordBot(commands.Bot):
 
         @self.tree.command(name="upload", description="Upload a sound file (optional: give a name")
         async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
-                         sound_name: str = None) -> None:
+                         sound_name: Optional[str] = None, start_time: Optional[float] = None,
+                         end_time: Optional[float] = None) -> None:
             sounds = self.get_sounds_dict(self.sounds_dir)
             if len(sounds) >= int(self.config["MAX_SOUNDS"]):
                 await interaction.response.send_message("Max sounds reached.", ephemeral=True)
@@ -198,6 +200,10 @@ class DiscordBot(commands.Bot):
             else:
                 save_path = os.path.join(self.sounds_dir, attachment.filename)
             await attachment.save(save_path)
+
+            if start_time is not None or end_time is not None:
+                self.cut_audio(save_path, start_time, end_time)
+
             await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
 
         @self.tree.command(name="soundboard", description="Open a soundboard")
@@ -237,6 +243,14 @@ class DiscordBot(commands.Bot):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = root
         return sound_dict
+
+    @staticmethod
+    def cut_audio(save_path: str, start_time: Optional[float] = None, end_time: Optional[float] = None) -> None:
+        audio = AudioSegment.from_file(save_path)
+        start_ms = int(start_time * 1000) if start_time is not None else 0
+        end_ms = int(end_time * 1000) if end_time is not None else len(audio)
+        cut_audio = audio[start_ms:end_ms]
+        cut_audio.export(save_path, format=save_path.rsplit('.', 1)[-1])
 
 
 if __name__ == '__main__':
