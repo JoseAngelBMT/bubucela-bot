@@ -6,7 +6,7 @@ attrs==25.3.0
 cffi==1.17.1
 colorama==0.4.6
 dill==0.4.0
-discord.py==2.5.2
+git+https://github.com/Rapptz/discord.py.git
 ffmpeg-python==0.2.0
 frozenlist==1.5.0
 future==1.0.0
