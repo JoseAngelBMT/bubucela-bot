@@ -235,8 +235,7 @@ class DiscordBot(commands.Bot):
             (os.path.join(self.sounds_dir, file) for file in os.listdir(self.sounds_dir)
              if os.path.splitext(file)[0] == filename), None)
 
-    @staticmethod
-    def get_sounds_dict(path: str, use_cache: bool = True) -> dict:
+    def get_sounds_dict(self, path: str, use_cache: bool = True) -> dict:
 
         if use_cache and self.cached_sounds is not None:
             return self.cached_sounds
@@ -250,7 +249,7 @@ class DiscordBot(commands.Bot):
             if os.path.isfile(root):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = root
-        self.cached_sounds = cached_sounds
+        self.cached_sounds = sound_dict
         return sound_dict
 
     @staticmethod
