@@ -55,12 +55,12 @@ class SoundboardView(View):
         await interaction.response.defer()
 
     async def previous_page(self, interaction: discord.Interaction):
-        self.page = max(0, self.page - 1)
+        self.page = self.page - 1 if self.page > 0 else self.total_pages
         self.update_buttons()
         await interaction.response.edit_message(view=self)
 
     async def next_page(self, interaction: discord.Interaction):
-        self.page = min(self.total_pages, self.page + 1)
+        self.page = self.page + 1 if self.page < self.total_pages else 0
         self.update_buttons()
         await interaction.response.edit_message(view=self)
 
@@ -107,12 +107,14 @@ class SoundboardView(View):
 class DiscordBot(commands.Bot):
     config: dict
     sound_formats: list[str] = [".mp3", ".wav", ".ogg", ".opus"]
+    cached_sounds: Optional[dict]
 
     def __init__(self, config_venv: dict) -> None:
         super().__init__(command_prefix=config_venv["DISCORD_PREFIX"],
                          intents=discord.Intents.all())
         self.config = config_venv
         self.sounds_dir = config_venv["SOUNDS_DIR"]
+        self.cached_sounds = None
         self.register_commands()
 
     async def setup_hook(self):
@@ -205,6 +207,7 @@ class DiscordBot(commands.Bot):
                 self.cut_audio(save_path, start_time, end_time)
 
             await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
+            self.get_sounds_dict(self.sounds_dir, False)
 
         @self.tree.command(name="soundboard", description="Open a soundboard")
         async def soundboard(interaction: discord.Interaction) -> None:
@@ -225,6 +228,7 @@ class DiscordBot(commands.Bot):
 
             view = SoundboardView(self, sounds, mode="delete")
             await interaction.response.send_message("Select a sound:", view=view, ephemeral=True)
+            self.get_sounds_dict(self.sounds_dir, False)
 
     def find_sound(self, filename: str) -> Optional[str]:
         return next(
@@ -232,7 +236,11 @@ class DiscordBot(commands.Bot):
              if os.path.splitext(file)[0] == filename), None)
 
     @staticmethod
-    def get_sounds_dict(path: str) -> dict:
+    def get_sounds_dict(path: str, use_cache: bool = True) -> dict:
+
+        if use_cache and self.cached_sounds is not None:
+            return self.cached_sounds
+
         if not os.path.isdir(path):
             raise ValueError(f"Path is not valid: {path}")
 
@@ -242,6 +250,7 @@ class DiscordBot(commands.Bot):
             if os.path.isfile(root):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = root
+        self.cached_sounds = cached_sounds
         return sound_dict
 
     @staticmethod
