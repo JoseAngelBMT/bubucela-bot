@@ -1,23 +1,26 @@
+import json
 import os
 from typing import Optional
-from dotenv import dotenv_values
 
 import discord
+from discord import ButtonStyle
 from discord.ext import commands, tasks
 from discord.ui import View
+from dotenv import dotenv_values
 from pydub import AudioSegment
 
 
 class SoundboardView(View):
     sounds_per_page: int = 20
 
-    def __init__(self, discord_bot: commands.Bot, sounds: dict, mode: str = "play", page: int = 0):
+    def __init__(self, sounds: dict, mode: str = "play", multi_select: bool = False) -> None:
         super().__init__(timeout=None)
-        self.bot = discord_bot
         self.sounds = sounds
         self.mode = mode
-        self.page = page
+        self.multi_select = multi_select
+        self.page = 0
         self.total_pages = (len(sounds) - 1) // self.sounds_per_page
+        self.selected_sounds = set()
 
         self.update_buttons()
 
@@ -31,10 +34,16 @@ class SoundboardView(View):
 
         current_sounds = self.get_current_page_sounds()
         for sound_name in current_sounds:
+            selected = sound_name in self.selected_sounds
+            if selected:
+                style = ButtonStyle.success
+            elif self.mode == "delete":
+                style = ButtonStyle.danger
+            else:
+                style = ButtonStyle.gray
             button = discord.ui.Button(label=sound_name[:self.sounds_per_page],
                                        custom_id=sound_name[:self.sounds_per_page],
-                                       style=discord.ButtonStyle.danger if self.mode == "delete"
-                                       else discord.ButtonStyle.gray)
+                                       style=style)
             button.callback = self.create_callback(sound_name)
             self.add_item(button)
 
@@ -47,20 +56,25 @@ class SoundboardView(View):
 
             for (emoji, action) in nav_buttons:
                 button = discord.ui.Button(label=emoji,
-                                           style=discord.ButtonStyle.primary)
+                                           style=ButtonStyle.primary)
                 button.callback = action
                 self.add_item(button)
+
+        if self.mode == "select":
+            confirm_button = discord.ui.Button(label="Confirm", style=ButtonStyle.primary)
+            confirm_button.callback = self.confirm_selection
+            self.add_item(confirm_button)
 
     async def noop(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
     async def previous_page(self, interaction: discord.Interaction):
-        self.page = max(0, self.page - 1)
+        self.page = self.page - 1 if self.page > 0 else self.total_pages
         self.update_buttons()
         await interaction.response.edit_message(view=self)
 
     async def next_page(self, interaction: discord.Interaction):
-        self.page = min(self.total_pages, self.page + 1)
+        self.page = self.page + 1 if self.page < self.total_pages else 0
         self.update_buttons()
         await interaction.response.edit_message(view=self)
 
@@ -100,19 +114,38 @@ class SoundboardView(View):
                 else:
                     interaction.response.send_message(f"Sound {sound_name} does not exist or already eliminated.",
                                                       ephemeral=True)
+            elif self.mode == "select":
+                if self.multi_select:
+                    if sound_name in self.selected_sounds:
+                        self.selected_sounds.remove(sound_name)
+                    else:
+                        self.selected_sounds.add(sound_name)
+                else:
+                    self.selected_sounds = {sound_name}
+                self.update_buttons()
+                await interaction.response.edit_message(view=self)
 
         return callback
+
+    async def confirm_selection(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        self.stop()
+
+    def get_selected_sounds(self) -> list:
+        return list(self.selected_sounds)
 
 
 class DiscordBot(commands.Bot):
     config: dict
     sound_formats: list[str] = [".mp3", ".wav", ".ogg", ".opus"]
+    cached_sounds: Optional[dict]
 
     def __init__(self, config_venv: dict) -> None:
         super().__init__(command_prefix=config_venv["DISCORD_PREFIX"],
                          intents=discord.Intents.all())
         self.config = config_venv
         self.sounds_dir = config_venv["SOUNDS_DIR"]
+        self.cached_sounds = None
         self.register_commands()
 
     async def setup_hook(self):
@@ -131,6 +164,29 @@ class DiscordBot(commands.Bot):
                 non_bot_members = [m for m in channel.members if not m.bot]
                 if len(non_bot_members) == 0:
                     await vc.disconnect(force=True)
+
+    async def on_voice_state_update(self, member, before, after):
+        user_sounds = self.load_user_sounds()
+        print(user_sounds)
+        sound_name = user_sounds.get(str(member.id))
+        if sound_name is None:
+            return
+
+        sound_path = self.find_sound(sound_name)
+        if not sound_path:
+            return
+
+        if before.channel != after.channel and after.channel is not None:
+            voice_client = member.guild.voice_client
+            if voice_client and voice_client.channel == after.channel:
+                if not voice_client.is_playing():
+                    source = discord.FFmpegPCMAudio(sound_path)
+                    voice_client.play(source)
+            else:
+                channel = after.channel
+                voice_client = await channel.connect()
+                source = discord.FFmpegPCMAudio(sound_path)
+                voice_client.play(source)
 
     def register_commands(self) -> None:  # pylint: disable=too-many-statements
 
@@ -205,6 +261,7 @@ class DiscordBot(commands.Bot):
                 self.cut_audio(save_path, start_time, end_time)
 
             await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
+            self.get_sounds_dict(self.sounds_dir, False)
 
         @self.tree.command(name="soundboard", description="Open a soundboard")
         async def soundboard(interaction: discord.Interaction) -> None:
@@ -212,7 +269,7 @@ class DiscordBot(commands.Bot):
             if not sounds:
                 await interaction.response.send_message("No sounds found.", ephemeral=True)
                 return
-            view = SoundboardView(self, sounds)
+            view = SoundboardView(sounds)
             await interaction.response.send_message("Soundboard activated:", view=view)
 
         @self.tree.command(name="delete", description="Delete a sound")
@@ -223,16 +280,38 @@ class DiscordBot(commands.Bot):
                 await interaction.response.send_message("No sounds found.", ephemeral=True)
                 return
 
-            view = SoundboardView(self, sounds, mode="delete")
+            view = SoundboardView(sounds, mode="delete")
             await interaction.response.send_message("Select a sound:", view=view, ephemeral=True)
+            self.get_sounds_dict(self.sounds_dir, False)
+
+        @self.tree.command(name="set_user_sound", description="Set a personal sound")
+        async def set_user_sound(interaction: discord.Interaction):
+            sounds = self.get_sounds_dict(self.sounds_dir)
+            if not sounds:
+                await interaction.response.send_message("No sounds.", ephemeral=True)
+                return
+
+            view = SoundboardView(sounds, mode="select", multi_select=False)
+            await interaction.response.send_message("Select your sound:", view=view, ephemeral=True)
+
+            await view.wait()
+            selected = view.get_selected_sounds()
+            if selected:
+                self.save_user_sounds(str(interaction.user.id), selected[0])
+                await interaction.followup.send(f"Set {selected} sound as personal", ephemeral=True)
+            else:
+                await interaction.followup.send("No sound selected.", ephemeral=True)
 
     def find_sound(self, filename: str) -> Optional[str]:
         return next(
             (os.path.join(self.sounds_dir, file) for file in os.listdir(self.sounds_dir)
              if os.path.splitext(file)[0] == filename), None)
 
-    @staticmethod
-    def get_sounds_dict(path: str) -> dict:
+    def get_sounds_dict(self, path: str, use_cache: bool = True) -> dict:
+
+        if use_cache and self.cached_sounds is not None:
+            return self.cached_sounds
+
         if not os.path.isdir(path):
             raise ValueError(f"Path is not valid: {path}")
 
@@ -242,6 +321,7 @@ class DiscordBot(commands.Bot):
             if os.path.isfile(root):
                 nombre_sin_extension, _ = os.path.splitext(sound)
                 sound_dict[nombre_sin_extension] = root
+        self.cached_sounds = sound_dict
         return sound_dict
 
     @staticmethod
@@ -251,6 +331,28 @@ class DiscordBot(commands.Bot):
         end_ms = int(end_time * 1000) if end_time is not None else len(audio)
         cut_audio = audio[start_ms:end_ms]
         cut_audio.export(save_path, format=save_path.rsplit('.', 1)[-1])
+
+    @staticmethod
+    def load_user_sounds() -> dict:
+        path = "static/user_sounds.json"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return json.load(f)
+        return {}
+
+    @staticmethod
+    def save_user_sounds(user_id: str, sound_name: str) -> None:
+        data = {}
+        path = "static/user_sounds.json"
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = {}
+        data[user_id] = sound_name
+        with open(path, "w") as f:
+            json.dump(data, f, indent=4)
 
 
 if __name__ == '__main__':
