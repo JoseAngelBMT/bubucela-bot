@@ -302,6 +302,18 @@ class DiscordBot(commands.Bot):
             else:
                 await interaction.followup.send("No sound selected.", ephemeral=True)
 
+        @self.tree.command(name="clear_user_sound", description="Clear your personal sound")
+        async def clear_user_sound(interaction: discord.Interaction):
+            user_sounds = self.load_user_sounds()
+            if str(interaction.user.id) in user_sounds:
+                del user_sounds[str(interaction.user.id)]
+                with open("static/user_sounds.json", "w") as f:
+                    json.dump(user_sounds, f, indent=4)
+                await interaction.response.send_message("Cleared your personal sound.", ephemeral=True)
+            else:
+                await interaction.response.send_message("You don't have a personal sound set.", ephemeral=True)
+
+
     def find_sound(self, filename: str) -> Optional[str]:
         return next(
             (os.path.join(self.sounds_dir, file) for file in os.listdir(self.sounds_dir)
