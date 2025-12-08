@@ -1,5 +1,6 @@
 services:
   bubucela:
+    build: .
     image: bubucela-bot
     container_name: bubucela
     restart: unless-stopped
