@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 
 static/
+.python-version

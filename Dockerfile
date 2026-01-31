@@ -1,28 +1,24 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-WORKDIR /
+WORKDIR /app
 
-
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libopenblas-dev \
-    liblapack-dev \
     ffmpeg \
     libsodium-dev \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-COPY .env .
+# Copiar archivos de dependencias
+COPY pyproject.toml uv.lock* ./
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Sincronizar dependencias (uv ya está instalado)
+RUN uv sync --frozen --no-dev
 
+# Copiar código
 COPY . .
 
-# Comando por defecto
+# Variables de entorno para usar el venv
+ENV PATH="/app/.venv/bin:$PATH"
+
 CMD ["python", "-m", "bot.main"]
