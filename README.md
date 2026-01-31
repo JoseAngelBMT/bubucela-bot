@@ -1,106 +1,286 @@
-# Project Overview
-This repository contains a Discord bot designed to function as a personal soundboard. The bot allows users to upload, play, and manage sound files directly within Discord voice channels. It is particularly tailored for deployment on devices like the Raspberry Pi, leveraging Docker for easy setup and portability.
+# 🎵 Discord Soundboard Bot - Interactive Voice Channel Sound Player
 
-## Features:
-Soundboard Interface: Interactive buttons to play or delete sounds.
+A feature-rich **Discord soundboard bot** with YouTube integration, personal sound profiles, and interactive UI. Perfect for adding custom sounds, memes, and audio clips to your Discord server voice channels.
 
-* Commands:
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Discord.py](https://img.shields.io/badge/discord.py-latest-blue.svg)](https://github.com/Rapptz/discord.py)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-    * /join: Connect the bot to a voice channel.
+## ✨ Key Features
 
-    * /leave: Disconnect the bot from the voice channel.
+### 🎹 Interactive Soundboard
+- **Visual soundboard UI** with clickable buttons for each sound
+- Play sounds instantly from an interactive Discord interface
+- **Real-time sound management** - upload, play, and delete sounds on the fly
+- Automatic cleanup of old soundboard messages
 
-    * /play [sound_name]: Play a specific sound.
+### 🎤 Voice Channel Integration
+- Seamless voice channel connection and playback
+- **Auto-disconnect** when no users are in the channel (every 5 minutes check)
+- Support for multiple audio formats: `.mp3`, `.wav`, `.ogg`
+- Queue-free instant sound playback
 
-    * /stop: Stop the currently playing sound.
+### 📥 Advanced Upload Options
+- **Direct file upload** - Drag and drop audio files into Discord
+- **YouTube audio extraction** - Download audio from YouTube videos with `/upload_youtube`
+- **Audio trimming** - Specify start and end times to cut audio segments
+- Custom sound naming for easy organization
+- Configurable file size limits and sound count restrictions
 
-    * /upload [attachment] [optional_name]: Upload a sound file to the bot's library.
+### 👤 Personal Sound Profiles
+- **Set personal entrance sounds** that play automatically when you join a voice channel
+- Per-user sound customization with `/set_user_sound`
+- Clear personal sounds anytime with `/clear_user_sound`
 
-    * /soundboard: Open an interactive soundboard interface.
+### 🎛️ Full Command Suite
+All commands use Discord's modern slash command interface:
 
-    * /delete: Delete a sound from the library.
+| Command | Description |
+|---------|-------------|
+| `/join` | Connect the bot to your voice channel |
+| `/leave` | Disconnect the bot from the voice channel |
+| `/play <sound_name>` | Play a specific sound by name |
+| `/stop` | Stop the currently playing sound |
+| `/soundboard` | Open the interactive soundboard UI |
+| `/upload <file> [name] [start] [end]` | Upload an audio file with optional trimming |
+| `/upload_youtube <url> <name> [start] [end]` | Extract audio from YouTube video |
+| `/delete` | Delete sounds from the library via UI |
+| `/set_user_sound` | Set your personal entrance sound |
+| `/clear_user_sound` | Remove your personal entrance sound |
 
-* Supported Formats: .mp3, .wav, .ogg.
+### ⚙️ Customizable Configuration
+- Set maximum number of sounds per server
+- Configure file size limits
+- Custom command prefix support
+- Persistent sound storage with volume mounting
 
-* Customizable Limits: Maximum number of sounds and file size restrictions can be configured.
+## 🚀 Quick Start Guide
 
-# Deployment Instructions
-## Prerequisites:
-1. Docker Installed: Ensure Docker is installed on your system (including Raspberry Pi).
+### Prerequisites
+- **Docker** installed on your system (Windows, macOS, Linux, or Raspberry Pi)
+- **Discord Bot Token** from the [Discord Developer Portal](https://discord.com/developers/applications)
+- **FFmpeg** (included in Docker image)
 
-2. Environment File (.env): Create a .env file with the following variables:
+### 1️⃣ Create Your Discord Bot
 
-```text
-DISCORD_TOKEN=your_discord_bot_token
-DISCORD_PREFIX=!
-SOUNDS_DIR=/path/to/sounds
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **"New Application"** and give it a name
+3. Navigate to the **"Bot"** tab and click **"Add Bot"**
+4. Copy your bot token (keep it secret!)
+5. Enable the following **Privileged Gateway Intents**:
+   - ✅ Presence Intent
+   - ✅ Server Members Intent
+   - ✅ Message Content Intent
+6. Go to **OAuth2 → URL Generator**:
+   - Select scopes: `bot`, `applications.commands`
+   - Select permissions: `Connect`, `Speak`, `Send Messages`, `Read Message History`, `Use Slash Commands`
+   - Copy the generated URL and invite the bot to your server
+
+### 2️⃣ Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Required
+DISCORD_TOKEN=your_discord_bot_token_here
+
+# Optional (defaults shown)
+DISCORD_PREFIX=/
+SOUNDS_DIR=./sounds
 MAX_SOUNDS=50
 MAX_FILE_SIZE_MB=5
 ```
-3. Sound Files Directory: Prepare a directory for storing sound files (e.g., sounds/).
 
-## Docker Setup
-### Build the Docker Image:
+### 3️⃣ Deploy with Docker
+
+#### Option A: Docker Compose (Recommended)
+
 ```bash
-docker build -t <custom-bot-name> .
+# Clone the repository
+git clone https://github.com/JoseAngelBMT/bubucela-bot.git
+cd bubucela-bot
+
+# Start the bot (creates sounds directory automatically)
+docker-compose up -d
 ```
-Replace <custom-bot-name> with your preferred name for the Docker image.
 
-### Run the Docker Container:
+#### Option B: Docker CLI
+
 ```bash
-docker run -d --restart unless-stopped --env-file .env -v $(pwd)/sounds/:/sounds/ <custom-bot-name>
+# Build the image
+docker build -t discord-soundboard-bot .
+
+# Create sounds directory
+mkdir -p sounds
+
+# Run the container
+docker run -d \
+  --name soundboard-bot \
+  --restart unless-stopped \
+  --env-file .env \
+  -v $(pwd)/sounds:/sounds \
+  discord-soundboard-bot
 ```
-Explanation of flags:
 
-* -d: Runs the container in detached mode.
+**For Windows PowerShell**, replace `$(pwd)` with `${PWD}`:
+```powershell
+docker run -d --name soundboard-bot --restart unless-stopped --env-file .env -v ${PWD}/sounds:/sounds discord-soundboard-bot
+```
 
-* --restart unless-stopped: Automatically restarts the container unless manually stopped.
+### 4️⃣ Deploy on Raspberry Pi
 
-* --env-file .env: Loads environment variables from the .env file.
-
-* -v $(pwd)/sounds/:/sounds/: Mounts your local sounds/ directory to the container for persistent storage.
-
-### Raspberry Pi Deployment
-The bot is optimized for lightweight devices like Raspberry Pi. Follow these additional steps:
-
-1. Install Docker on Raspberry Pi using:
+Perfect for 24/7 hosting on low-power devices:
 
 ```bash
+# Install Docker (if not already installed)
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
+newgrp docker
+
+# Clone and deploy
+git clone https://github.com/JoseAngelBMT/bubucela-bot.git
+cd bubucela-bot
+docker-compose up -d
+
+# Check logs
+docker-compose logs -f
 ```
-2. Clone this repository and navigate to its directory:
 
-```bash
-git clone <repository-url>
-cd <repository-directory>
+## 📖 Usage Examples
+
+### Basic Sound Playback
 ```
-3. Build and run the Docker container using the commands above.
+1. Join a voice channel in Discord
+2. Type `/join` to bring the bot to your channel
+3. Type `/soundboard` to open the interactive UI
+4. Click any sound button to play it instantly
+```
 
-# How to Use
+### Upload Sound from File
+```
+/upload
+- Attach: your-audio-file.mp3
+- Name: epic-sound
+- Start: 00:10 (optional - trim from 10 seconds)
+- End: 00:30 (optional - trim to 30 seconds)
+```
 
-1.  **Create a Discord Bot:**
-    *   Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-    *   Create a new application.
-    *   Navigate to the "Bot" tab and create a bot user.
-    *   Copy the bot's token.  This is your `DISCORD_TOKEN` in the `.env` file.
-    *   Enable the "Presence Intent", "Server Members Intent", and "Message Content Intent" in the "Privileged Gateway Intents" section.
-2. Invite your bot to your Discord server using its OAuth2 URL (configured in Discord Developer Portal).
+### Extract Audio from YouTube
+```
+/upload_youtube
+- URL: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+- Name: rickroll
+- Start: 00:00:43
+- End: 00:00:48
+```
 
-3. Use commands in any text channel or interact with the soundboard interface.
+### Set Personal Entrance Sound
+```
+1. Type `/set_user_sound`
+2. Select your favorite sound from the menu
+3. Every time you join a voice channel, your sound plays automatically!
+```
 
-4. Manage sounds by uploading or deleting them dynamically.
+## 🛠️ Configuration Options
 
-# Contributing
-Feel free to fork this repository, submit issues, or create pull requests to improve functionality or add new features!
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DISCORD_TOKEN` | Your Discord bot token (**required**) | - |
+| `DISCORD_PREFIX` | Command prefix for slash commands | `/` |
+| `SOUNDS_DIR` | Directory to store sound files | `./sounds` |
+| `MAX_SOUNDS` | Maximum number of sounds allowed | `50` |
+| `MAX_FILE_SIZE_MB` | Maximum file size per sound in MB | `5` |
 
-# License
+## 🔧 Advanced Features
 
-This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License - see [https://creativecommons.org/licenses/by-nc/4.0/](https://creativecommons.org/licenses/by-nc/4.0/) for details.
+### Audio Trimming
+Both upload commands support precise audio trimming with multiple time formats:
+- Seconds: `45`
+- MM:SS: `01:30`
+- HH:MM:SS: `00:01:30`
 
-# Attribution
+### Auto-Cleanup
+- Automatically disconnects from empty voice channels after 5 minutes
+- Cleans up old soundboard UI messages when creating new ones
+- Invalidates cache after uploads for instant availability
 
-When using this bot, please attribute the original creation to:
+### Persistent Storage
+All sounds are stored in the mounted `./sounds` directory, surviving container restarts and updates.
 
-[Jose Angel/JoseAngelBMT]
+## 📦 Tech Stack
+
+- **Python 3.12+** - Modern async/await syntax
+- **discord.py** - Latest version with slash commands
+- **yt-dlp** - YouTube audio extraction
+- **FFmpeg** - Audio processing and playback
+- **pydub** - Audio manipulation and trimming
+- **Docker** - Containerized deployment
+
+## 🐛 Troubleshooting
+
+### Bot doesn't respond to slash commands
+1. Ensure you've invited the bot with `applications.commands` scope
+2. Wait a few minutes after first deployment for Discord to sync commands
+3. Try kicking and re-inviting the bot to your server
+
+### Audio doesn't play in voice channel
+1. Verify FFmpeg is installed (included in Docker image)
+2. Check bot has `Connect` and `Speak` permissions
+3. Ensure audio file format is supported (`.mp3`, `.wav`, `.ogg`)
+
+### YouTube download fails
+1. Make sure `yt-dlp` is up to date (rebuild Docker image)
+2. Some videos may be region-locked or age-restricted
+3. Check the video URL is valid and accessible
+
+### Bot disconnects unexpectedly
+- This is normal behavior when no users are in the voice channel for 5+ minutes
+- The bot automatically rejoins when needed
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/AmazingFeature`)
+3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** to the branch (`git push origin feature/AmazingFeature`)
+5. **Open** a Pull Request
+
+### Ideas for Contributions
+- Additional audio effects and filters
+- Sound search functionality
+- Web dashboard for sound management
+- Sound categories and tagging
+- Volume controls
+- Sound queuing system
+
+## 📝 License
+
+This project is licensed under the **Creative Commons Attribution-NonCommercial 4.0 International License**.
+
+[![License: CC BY-NC 4.0](https://licensebuttons.net/l/by-nc/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc/4.0/)
+
+- ✅ You can use, modify, and share this bot
+- ❌ Commercial use is not permitted
+- 📄 [Read full license terms](https://creativecommons.org/licenses/by-nc/4.0/)
+
+## 👤 Author & Attribution
+
+**Created by:** [Jose Angel](https://github.com/JoseAngelBMT)
+
+When using or modifying this bot, please provide attribution to the original creator.
+
+## ⭐ Support
+
+If you find this project useful, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting bugs and issues
+- 💡 Suggesting new features
+- 🔀 Contributing code improvements
+
+## 🔗 Keywords
+
+Discord bot, soundboard, Discord soundboard bot, voice channel bot, audio bot, Discord audio player, YouTube to Discord, Discord sound effects, meme soundboard, custom Discord sounds, Discord voice bot, Python Discord bot, slash commands bot, interactive Discord bot, Discord music alternative, sound manager bot, Raspberry Pi Discord bot, Docker Discord bot, self-hosted Discord bot
 
