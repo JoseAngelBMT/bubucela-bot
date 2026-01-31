@@ -3,7 +3,8 @@ import os
 from typing import Optional
 
 import discord
-from discord import ButtonStyle
+import yt_dlp
+from discord import ButtonStyle, app_commands
 from discord.ext import commands, tasks
 from discord.ui import View
 from dotenv import dotenv_values
@@ -167,7 +168,6 @@ class DiscordBot(commands.Bot):
 
     async def on_voice_state_update(self, member, before, after):
         user_sounds = self.load_user_sounds()
-        print(user_sounds)
         sound_name = user_sounds.get(str(member.id))
         if sound_name is None:
             return
@@ -234,8 +234,8 @@ class DiscordBot(commands.Bot):
 
         @self.tree.command(name="upload", description="Upload a sound file (optional: give a name")
         async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
-                         sound_name: Optional[str] = None, start_time: Optional[float] = None,
-                         end_time: Optional[float] = None) -> None:
+                         sound_name: Optional[str] = None, start_time: Optional[str] = None,
+                         end_time: Optional[str] = None) -> None:
             sounds = self.get_sounds_dict(self.sounds_dir)
             if len(sounds) >= int(self.config["MAX_SOUNDS"]):
                 await interaction.response.send_message("Max sounds reached.", ephemeral=True)
@@ -313,6 +313,35 @@ class DiscordBot(commands.Bot):
             else:
                 await interaction.response.send_message("You don't have a personal sound set.", ephemeral=True)
 
+        @self.tree.command(name="upload_youtube",
+                           description="Upload a sound file from a YouTube video")
+        @app_commands.describe(
+            start_time="Start time (hh:mm:ss, mm:ss or ss)",
+            end_time="End time (hh:mm:ss, mm:ss or ss)"
+        )
+        async def upload(interaction: discord.Interaction, youtube_url: str,
+                         sound_name: str, start_time: Optional[str] = None,
+                         end_time: Optional[str] = None) -> None:
+            sounds = self.get_sounds_dict(self.sounds_dir)
+            if len(sounds) >= int(self.config["MAX_SOUNDS"]):
+                await interaction.response.send_message("Max sounds reached.", ephemeral=True)
+                return
+
+            await interaction.response.defer(ephemeral=True)
+            try:
+                sound_path = self.save_youtube_audio(youtube_url, sound_name, start_time, end_time)
+                sound_size = self.sound_size(sound_name)
+
+                if sound_size / (1024 * 1024) > int(self.config["MAX_FILE_SIZE_MB"]):
+                    await interaction.followup.send(
+                        f"File exceeds max size of {self.config['MAX_FILE_SIZE_MB']} MB.", ephemeral=True)
+                    os.remove(sound_path)
+                    return
+
+                await interaction.followup.send(f"Saved: {sound_name}", ephemeral=True)
+                self.get_sounds_dict(self.sounds_dir, False)
+            except Exception as e:
+                await interaction.followup.send(f"❌ Error downloading the sound {str(e)}", ephemeral=True)
 
     def find_sound(self, filename: str) -> Optional[str]:
         return next(
@@ -336,11 +365,13 @@ class DiscordBot(commands.Bot):
         self.cached_sounds = sound_dict
         return sound_dict
 
-    @staticmethod
-    def cut_audio(save_path: str, start_time: Optional[float] = None, end_time: Optional[float] = None) -> None:
+    def cut_audio(self, save_path: str, start_time: Optional[str] = None,
+                  end_time: Optional[str] = None) -> None:
         audio = AudioSegment.from_file(save_path)
-        start_ms = int(start_time * 1000) if start_time is not None else 0
-        end_ms = int(end_time * 1000) if end_time is not None else len(audio)
+
+        start_ms = int(self.time_to_seconds(start_time) * 1000) if start_time is not None else 0
+        end_ms = int(self.time_to_seconds(end_time) * 1000) if end_time is not None else len(audio)
+
         cut_audio = audio[start_ms:end_ms]
         cut_audio.export(save_path, format=save_path.rsplit('.', 1)[-1])
 
@@ -365,6 +396,47 @@ class DiscordBot(commands.Bot):
         data[user_id] = sound_name
         with open(path, "w") as f:
             json.dump(data, f, indent=4)
+
+    def save_youtube_audio(self, url: str, sound_name: str, start_time: Optional[str], end_time: Optional[str],
+                           extension: str = "opus") -> str:
+
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": os.path.join(self.sounds_dir, f"{sound_name}.%(ext)s"),
+            "download_ranges": lambda info_dict, yt_instance: [
+                {'start_time': self.time_to_seconds(start_time) if start_time else 0,
+                 'end_time': self.time_to_seconds(end_time) if end_time else 1e6,
+                 'title': 'first_section'},
+            ],
+            "force_keyframes_at_cuts": True,
+            "postprocessors": [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": extension,
+                "preferredquality": "6",
+            }],
+            "quiet": True,
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+        return os.path.join(self.sounds_dir, f"{sound_name}.{extension}")
+
+    @staticmethod
+    def time_to_seconds(time: str) -> float:
+        match [int(p) for p in time.strip().split(":")]:
+            case [h, m, s]:
+                return h * 3600 + m * 60 + s
+            case [m, s]:
+                return m * 60 + s
+            case [s]:
+                return s
+            case _:
+                raise ValueError(f"Time format not valid: {tiempo}")
+
+    def sound_size(self, sound_name: str) -> int:
+        sound_path = self.find_sound(sound_name)
+        return os.path.getsize(sound_path)
 
 
 if __name__ == '__main__':
