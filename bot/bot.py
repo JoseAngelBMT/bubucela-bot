@@ -67,6 +67,24 @@ class DiscordBot(commands.Bot):
                 source = discord.FFmpegPCMAudio(sound_path)
                 voice_client.play(source)
 
+    async def cleanup_soundboard_messages(self, channel: discord.TextChannel) -> None:
+        """Delete all previous soundboard messages from the bot in the channel."""
+        try:
+            async for message in channel.history(limit=100):
+                if message.author == self.user and message.content == "Soundboard activated:" and message.components:
+                    try:
+                        await message.delete()
+                    except discord.errors.NotFound:
+                        print(f"Soundboard cleanup: Message {message.id} already deleted in channel {channel.name}")
+                    except discord.errors.Forbidden:
+                        print(f"Soundboard cleanup: No permission to delete message {message.id} in channel {channel.name}")
+                    except discord.errors.HTTPException as e:
+                        print(f"Soundboard cleanup: HTTP error deleting message {message.id} in channel {channel.name}: {e}")
+        except discord.errors.Forbidden:
+            print(f"Soundboard cleanup: No permission to read history in channel {channel.name}")
+        except discord.errors.HTTPException as e:
+            print(f"Soundboard cleanup: HTTP error reading history in channel {channel.name}: {e}")
+
     def register_commands(self) -> None:
         """Register all bot commands."""
         register_voice_commands(self.tree)

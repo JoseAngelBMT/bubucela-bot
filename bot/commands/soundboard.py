@@ -31,5 +31,8 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
         if not sounds:
             await interaction.response.send_message("No sounds found.", ephemeral=True)
             return
+
+        await bot.cleanup_soundboard_messages(interaction.channel)
+
         view = SoundboardView(sounds)
         await interaction.response.send_message("Soundboard activated:", view=view)
