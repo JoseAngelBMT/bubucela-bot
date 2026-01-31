@@ -25,4 +25,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Comando por defecto
-CMD ["python", "bot/bot.py"]
+CMD ["python", "-m", "bot.main"]
