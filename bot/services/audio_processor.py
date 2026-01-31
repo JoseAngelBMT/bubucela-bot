@@ -32,7 +32,7 @@ class AudioProcessor:
         cut_audio.export(save_path, format=save_path.rsplit('.', 1)[-1])
 
     def download_youtube_audio(self, url: str, sound_name: str, start_time: Optional[str],
-                                end_time: Optional[str], extension: str = "opus") -> str:
+                               end_time: Optional[str], extension: str = "opus") -> str:
         """
         Download audio from YouTube video.
         

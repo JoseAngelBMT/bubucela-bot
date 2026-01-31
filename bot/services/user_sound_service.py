@@ -16,7 +16,7 @@ class UserSoundService:
             Dictionary mapping user IDs to their chosen sounds
         """
         if os.path.exists(USER_SOUNDS_JSON_PATH):
-            with open(USER_SOUNDS_JSON_PATH, "r") as f:
+            with open(USER_SOUNDS_JSON_PATH, "r", encoding="utf-8") as f:
                 return json.load(f)
         return {}
 
@@ -31,13 +31,13 @@ class UserSoundService:
         """
         data = {}
         if os.path.exists(USER_SOUNDS_JSON_PATH):
-            with open(USER_SOUNDS_JSON_PATH, "r") as f:
+            with open(USER_SOUNDS_JSON_PATH, "r", encoding="utf-8") as f:
                 try:
                     data = json.load(f)
                 except json.JSONDecodeError:
                     data = {}
         data[user_id] = sound_name
-        with open(USER_SOUNDS_JSON_PATH, "w") as f:
+        with open(USER_SOUNDS_JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
     @staticmethod
@@ -54,7 +54,7 @@ class UserSoundService:
         user_sounds = UserSoundService.load_user_sounds()
         if user_id in user_sounds:
             del user_sounds[user_id]
-            with open(USER_SOUNDS_JSON_PATH, "w") as f:
+            with open(USER_SOUNDS_JSON_PATH, "w", encoding="utf-8") as f:
                 json.dump(user_sounds, f, indent=4)
             return True
         return False

@@ -23,4 +23,4 @@ jobs:
     - name: Run pylint inside venv
       run: |
         source venv/bin/activate
-        pylint $(git ls-files '*.py')
+        pylint --source-roots=. $(git ls-files '*.py')

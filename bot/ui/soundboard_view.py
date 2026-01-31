@@ -77,6 +77,7 @@ class SoundboardView(View):
         self.update_buttons()
         await interaction.response.edit_message(view=self)
 
+    # pylint: disable=too-many-branches
     def create_callback(self, sound_name: str):
         async def callback(interaction: discord.Interaction):
             if self.mode == "play":

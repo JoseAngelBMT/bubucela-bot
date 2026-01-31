@@ -6,3 +6,7 @@ disable=missing-module-docstring,missing-class-docstring,missing-function-docstr
 
 [REPORTS]
 fail-under=8.0
+
+[DESIGN]
+max-args=10
+max-positional-args=10

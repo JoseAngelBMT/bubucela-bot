@@ -69,7 +69,7 @@ class DiscordBot(commands.Bot):
 
     def register_commands(self) -> None:
         """Register all bot commands."""
-        register_voice_commands(self.tree, self)
+        register_voice_commands(self.tree)
         register_soundboard_commands(self.tree, self)
         register_upload_commands(self.tree, self)
         register_delete_commands(self.tree, self)

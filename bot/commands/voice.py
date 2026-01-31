@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 
 
-def register_voice_commands(tree: app_commands.CommandTree, bot) -> None:
+def register_voice_commands(tree: app_commands.CommandTree) -> None:
     """Register voice-related commands."""
 
     @tree.command(name="join", description="Joins a Discord chat voice")
