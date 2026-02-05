@@ -1,8 +1,10 @@
 import json
 import os
+import logging
 
 from bot.utils.constants import USER_SOUNDS_JSON_PATH
 
+logger = logging.getLogger(__name__)
 
 class UserSoundService:
     """Manages user sound preferences persistence."""
@@ -37,6 +39,7 @@ class UserSoundService:
                 except json.JSONDecodeError:
                     data = {}
         data[user_id] = sound_name
+        logger.info(f"Sound {sound_name} for {user_id}")
         with open(USER_SOUNDS_JSON_PATH, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
