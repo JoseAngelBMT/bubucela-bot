@@ -1,8 +1,8 @@
-"""Main entry point for the Discord bot."""
+import logging.config
+
 from bot.bot import DiscordBot
 from bot.config.settings import settings
-import logging.config
-import json
+
 
 def set_logger():
     """Configure logger for the application."""

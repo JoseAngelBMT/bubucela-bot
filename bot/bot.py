@@ -1,3 +1,5 @@
+import logging
+
 import discord
 from discord.ext import commands, tasks
 
@@ -10,6 +12,8 @@ from bot.config.settings import settings
 from bot.services.audio_processor import AudioProcessor
 from bot.services.sound_manager import SoundManager
 from bot.services.user_sound_service import UserSoundService
+
+logger = logging.getLogger(__name__)
 
 
 class DiscordBot(commands.Bot):
@@ -75,15 +79,20 @@ class DiscordBot(commands.Bot):
                     try:
                         await message.delete()
                     except discord.errors.NotFound:
-                        print(f"Soundboard cleanup: Message {message.id} already deleted in channel {channel.name}")
+                        logger.error(f"Soundboard cleanup: "
+                                     f"Message {message.id} already deleted in channel {channel.name}")
                     except discord.errors.Forbidden:
-                        print(f"Soundboard cleanup: No permission to delete message {message.id} in channel {channel.name}")
+                        logger.error(f"Soundboard cleanup: "
+                                     f"No permission to delete message {message.id} in channel {channel.name}")
                     except discord.errors.HTTPException as e:
-                        print(f"Soundboard cleanup: HTTP error deleting message {message.id} in channel {channel.name}: {e}")
+                        logger.error(f"Soundboard cleanup: "
+                                     f"HTTP error deleting message {message.id} in channel {channel.name}: {e}")
         except discord.errors.Forbidden:
-            print(f"Soundboard cleanup: No permission to read history in channel {channel.name}")
+            logger.error(f"Soundboard cleanup: "
+                         f"No permission to read history in channel {channel.name}")
         except discord.errors.HTTPException as e:
-            print(f"Soundboard cleanup: HTTP error reading history in channel {channel.name}: {e}")
+            logger.error(f"Soundboard cleanup: "
+                         f"HTTP error reading history in channel {channel.name}: {e}")
 
     def register_commands(self) -> None:
         """Register all bot commands."""
