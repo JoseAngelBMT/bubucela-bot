@@ -12,6 +12,7 @@ dependencies = [
     "attrs==25.3.0",
     "cffi==1.17.1",
     "colorama==0.4.6",
+    "davey>=0.1.4",
     "dill==0.4.0",
     "discord>=2.3.2",
     "discord-py",
