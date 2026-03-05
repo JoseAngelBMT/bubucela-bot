@@ -13,6 +13,7 @@ dependencies = [
     "cffi==1.17.1",
     "colorama==0.4.6",
     "dill==0.4.0",
+    "discord>=2.3.2",
     "discord-py",
     "ffmpeg-python==0.2.0",
     "frozenlist==1.5.0",
@@ -32,6 +33,3 @@ dependencies = [
     "yarl==1.18.3",
     "yt-dlp==2026.1.29",
 ]
-
-[tool.uv.sources]
-discord-py = { git = "https://github.com/Rapptz/discord.py.git", rev = "4496df79d047b7c26f0413c8a34086d309b96904" }

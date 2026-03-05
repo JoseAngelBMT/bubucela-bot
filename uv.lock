@@ -163,6 +163,7 @@ dependencies = [
     { name = "cffi" },
     { name = "colorama" },
     { name = "dill" },
+    { name = "discord" },
     { name = "discord-py" },
     { name = "ffmpeg-python" },
     { name = "frozenlist" },
@@ -193,7 +194,8 @@ requires-dist = [
     { name = "cffi", specifier = "==1.17.1" },
     { name = "colorama", specifier = "==0.4.6" },
     { name = "dill", specifier = "==0.4.0" },
-    { name = "discord-py", git = "https://github.com/Rapptz/discord.py.git?rev=4496df79d047b7c26f0413c8a34086d309b96904" },
+    { name = "discord", specifier = ">=2.3.2" },
+    { name = "discord-py" },
     { name = "ffmpeg-python", specifier = "==0.2.0" },
     { name = "frozenlist", specifier = "==1.5.0" },
     { name = "future", specifier = "==1.0.0" },
@@ -265,12 +267,28 @@ wheels = [
 ]
 
 [[package]]
+name = "discord"
+version = "2.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "discord-py" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7e/9f/0763429949416aeff9c6f33051270831b72e5582273acd28053b9b949462/discord-2.3.2.tar.gz", hash = "sha256:cc1ee2dbe6df218ca51519af355b97e87309f8230f58c7f34885feb8e8a76145", size = 1137, upload-time = "2023-08-10T21:45:07.93Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/38/d91ac49e8169b6c0f724f7aad26704eec07c4ecf31e067ca3d46a87e33d6/discord-2.3.2-py3-none-any.whl", hash = "sha256:d7959418799dd3b1e896685812d880169c193468b061b3431fa2a4664febd3da", size = 1132, upload-time = "2023-08-10T21:45:06.334Z" },
+]
+
+[[package]]
 name = "discord-py"
-version = "2.6.0a5239+g4496df79"
-source = { git = "https://github.com/Rapptz/discord.py.git?rev=4496df79d047b7c26f0413c8a34086d309b96904#4496df79d047b7c26f0413c8a34086d309b96904" }
+version = "2.7.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "audioop-lts", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ef/57/9a2d9abdabdc9db8ef28ce0cf4129669e1c8717ba28d607b5ba357c4de3b/discord_py-2.7.1.tar.gz", hash = "sha256:24d5e6a45535152e4b98148a9dd6b550d25dc2c9fb41b6d670319411641249da", size = 1106326, upload-time = "2026-03-03T18:40:46.24Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/a7/17208c3b3f92319e7fad259f1c6d5a5baf8fd0654c54846ced329f83c3eb/discord_py-2.7.1-py3-none-any.whl", hash = "sha256:849dca2c63b171146f3a7f3f8acc04248098e9e6203412ce3cf2745f284f7439", size = 1227550, upload-time = "2026-03-03T18:40:44.492Z" },
 ]
 
 [[package]]
