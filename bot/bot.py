@@ -13,6 +13,7 @@ from bot.services.audio_processor import AudioProcessor
 from bot.services.sound_modification_service import SoundModificationService
 from bot.services.sound_manager import SoundManager
 from bot.services.user_sound_service import UserSoundService
+from bot.services.audio_mixer import AudioMixer
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,25 @@ class DiscordBot(commands.Bot):
         self.audio_processor = AudioProcessor(settings.sounds_dir)
         self.sound_modification_service = SoundModificationService()
         self.user_sound_service = UserSoundService()
+        self.guild_mixers: dict[int, AudioMixer] = {}
 
         # Register all commands
         self.register_commands()
+
+    def get_mixer(self, guild_id: int) -> AudioMixer:
+        """Return existing mixer for the guild or create a fresh one."""
+        if guild_id not in self.guild_mixers:
+            self.guild_mixers[guild_id] = AudioMixer()
+        return self.guild_mixers[guild_id]
+
+    def replace_mixer(self, guild_id: int) -> AudioMixer:
+        """Replace (and cleanup) the mixer for a guild and return the new one."""
+        old = self.guild_mixers.pop(guild_id, None)
+        if old:
+            old.cleanup()
+        mixer = AudioMixer()
+        self.guild_mixers[guild_id] = mixer
+        return mixer
 
     async def setup_hook(self):
         return await self.tree.sync()

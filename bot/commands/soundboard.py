@@ -50,7 +50,7 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
 
         await bot.cleanup_soundboard_messages(interaction.channel)
 
-        view = SoundboardView(sounds)
+        view = SoundboardView(sounds, bot=bot)
         await interaction.response.send_message("Soundboard activated:", view=view)
 
     @tree.command(name="modify_volume", description="Modify a sound volume and keep a backup")
