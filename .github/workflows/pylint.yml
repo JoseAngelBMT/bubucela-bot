@@ -14,13 +14,11 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v3
     - name: Install dependencies
       run: |
-        python -m venv venv
-        source venv/bin/activate
-        pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Run pylint inside venv
+        uv sync --locked --dev
+    - name: Run pylint
       run: |
-        source venv/bin/activate
-        pylint --source-roots=. $(git ls-files '*.py')
+        uv run pylint --source-roots=. $(git ls-files '*.py')
