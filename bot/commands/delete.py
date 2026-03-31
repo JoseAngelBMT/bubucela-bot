@@ -15,6 +15,10 @@ def register_delete_commands(tree: app_commands.CommandTree, bot) -> None:
             await interaction.response.send_message("No sounds found.", ephemeral=True)
             return
 
-        view = SoundboardView(sounds, mode="delete")
+        view = SoundboardView(
+            sounds,
+            mode="delete",
+            sound_modification_service=bot.sound_modification_service,
+        )
         await interaction.response.send_message("Select a sound:", view=view, ephemeral=True)
         bot.sound_manager.invalidate_cache()

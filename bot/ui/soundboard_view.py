@@ -12,11 +12,13 @@ class SoundboardView(View):
 
     sounds_per_page: int = SOUNDS_PER_PAGE
 
-    def __init__(self, sounds: dict, mode: str = "play", multi_select: bool = False) -> None:
+    def __init__(self, sounds: dict, mode: str = "play", multi_select: bool = False,
+                 sound_modification_service=None) -> None:
         super().__init__(timeout=None)
         self.sounds = sounds
         self.mode = mode
         self.multi_select = multi_select
+        self.sound_modification_service = sound_modification_service
         self.page = 0
         self.total_pages = (len(sounds) - 1) // self.sounds_per_page
         self.selected_sounds = set()
@@ -110,10 +112,14 @@ class SoundboardView(View):
                 sound_path = self.sounds.get(sound_name)
                 if sound_path and os.path.exists(sound_path):
                     os.remove(sound_path)
+                    if self.sound_modification_service:
+                        self.sound_modification_service.clear_sound_tracking(sound_name)
                     await interaction.response.send_message(f"Removed sound {sound_name}.", ephemeral=True)
                 else:
-                    interaction.response.send_message(f"Sound {sound_name} does not exist or already eliminated.",
-                                                      ephemeral=True)
+                    await interaction.response.send_message(
+                        f"Sound {sound_name} does not exist or already eliminated.",
+                        ephemeral=True,
+                    )
             elif self.mode == "select":
                 if self.multi_select:
                     if sound_name in self.selected_sounds:

@@ -49,3 +49,88 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
 
         view = SoundboardView(sounds)
         await interaction.response.send_message("Soundboard activated:", view=view)
+
+    @tree.command(name="modify_volume", description="Modify a sound volume and keep a backup")
+    @app_commands.describe(volume="Target volume percentage (0-200)")
+    async def modify_volume(interaction: discord.Interaction, volume: app_commands.Range[int, 0, 200]) -> None:
+        sounds = bot.sound_manager.get_sounds_dict()
+        if not sounds:
+            await interaction.response.send_message("No sounds found.", ephemeral=True)
+            return
+
+        view = SoundboardView(sounds, mode="select", multi_select=False)
+        await interaction.response.send_message(
+            "Select one sound to modify:",
+            view=view,
+            ephemeral=True,
+        )
+
+        await view.wait()
+        selected = view.get_selected_sounds()
+        await interaction.delete_original_response()
+
+        if not selected:
+            await interaction.followup.send("No sound selected.", ephemeral=True)
+            return
+
+        sound_name = selected[0]
+        sound_path = bot.sound_manager.find_sound(sound_name)
+        if not sound_path:
+            await interaction.followup.send("Sound not found.", ephemeral=True)
+            return
+
+        try:
+            backup_path = bot.sound_modification_service.ensure_backup(sound_name, sound_path)
+            bot.audio_processor.apply_volume(output_path=sound_path, volume_percentage=volume, source_path=backup_path)
+            bot.sound_modification_service.mark_modified(sound_name, sound_path)
+            bot.sound_manager.invalidate_cache()
+            await interaction.followup.send(
+                f"Updated `{sound_name}` volume to {volume}% (backup saved).",
+                ephemeral=True,
+            )
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            await interaction.followup.send(f"Error modifying volume: {error}", ephemeral=True)
+
+    @tree.command(name="restore", description="Restore modified sounds from backup")
+    async def restore(interaction: discord.Interaction) -> None:
+        modified_sounds = bot.sound_modification_service.list_modified_sounds()
+        if not modified_sounds:
+            await interaction.response.send_message("No modified sounds to restore.", ephemeral=True)
+            return
+
+        view = SoundboardView(modified_sounds, mode="select", multi_select=True)
+        await interaction.response.send_message(
+            "Select one or more modified sounds to restore:",
+            view=view,
+            ephemeral=True,
+        )
+
+        await view.wait()
+        selected = view.get_selected_sounds()
+        await interaction.delete_original_response()
+
+        if not selected:
+            await interaction.followup.send("No sound selected.", ephemeral=True)
+            return
+
+        restored = []
+        failed = []
+        for sound_name in selected:
+            if bot.sound_modification_service.restore_sound(sound_name):
+                restored.append(sound_name)
+            else:
+                failed.append(sound_name)
+
+        bot.sound_manager.invalidate_cache()
+
+        if restored:
+            await interaction.followup.send(
+                f"Restored: {', '.join(restored)}",
+                ephemeral=True,
+            )
+        if failed:
+            await interaction.followup.send(
+                f"Could not restore: {', '.join(failed)}",
+                ephemeral=True,
+            )
+

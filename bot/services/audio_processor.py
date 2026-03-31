@@ -1,4 +1,5 @@
 import os
+import math
 from typing import Optional
 
 import yt_dlp
@@ -67,3 +68,25 @@ class AudioProcessor:
             ydl.download([url])
 
         return os.path.join(self.sounds_dir, f"{sound_name}.{extension}")
+
+    def apply_volume(self, output_path: str, volume_percentage: int, source_path: Optional[str] = None) -> None:
+        """Apply absolute volume percentage and export to output path.
+
+        Args:
+            output_path: Destination path to overwrite with new volume
+            volume_percentage: Target volume in percentage (0 = mute, 100 = unchanged)
+            source_path: Optional source path. If omitted, output_path is used as source.
+        """
+        volume_percentage = max(0, volume_percentage)
+        source = source_path or output_path
+
+        audio = AudioSegment.from_file(source)
+        if volume_percentage == 0:
+            processed = audio - 120
+        else:
+            gain_db = 20 * math.log10(volume_percentage / 100.0)
+            processed = audio.apply_gain(gain_db)
+
+        extension = os.path.splitext(output_path)[1].lstrip(".")
+        processed.export(output_path, format=extension)
+

@@ -10,6 +10,7 @@ from bot.commands.user_sounds import register_user_sounds_commands
 from bot.commands.voice import register_voice_commands
 from bot.config.settings import settings
 from bot.services.audio_processor import AudioProcessor
+from bot.services.sound_modification_service import SoundModificationService
 from bot.services.sound_manager import SoundManager
 from bot.services.user_sound_service import UserSoundService
 
@@ -26,6 +27,7 @@ class DiscordBot(commands.Bot):
         # Initialize services
         self.sound_manager = SoundManager(settings.sounds_dir)
         self.audio_processor = AudioProcessor(settings.sounds_dir)
+        self.sound_modification_service = SoundModificationService()
         self.user_sound_service = UserSoundService()
 
         # Register all commands

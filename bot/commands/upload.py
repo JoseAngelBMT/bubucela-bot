@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 import discord
@@ -34,7 +35,10 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
             save_path = os.path.join(settings.sounds_dir, f"{sound_name}.{extension}")
         else:
             save_path = os.path.join(settings.sounds_dir, attachment.filename)
-        await attachment.save(save_path)
+
+        stored_sound_name = os.path.splitext(os.path.basename(save_path))[0]
+        bot.sound_modification_service.clear_sound_tracking(stored_sound_name)
+        await attachment.save(Path(save_path))
 
         if start_time is not None or end_time is not None:
             bot.audio_processor.cut_audio(save_path, start_time, end_time)
@@ -68,6 +72,7 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
                 return
 
             await interaction.followup.send(f"Saved: {sound_name}", ephemeral=True)
+            bot.sound_modification_service.clear_sound_tracking(sound_name)
             bot.sound_manager.invalidate_cache()
         except Exception as e:  # pylint: disable=broad-exception-caught
             await interaction.followup.send(f"❌ Error downloading the sound {str(e)}", ephemeral=True)
