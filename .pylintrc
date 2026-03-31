@@ -2,7 +2,7 @@
 max-line-length=120
 
 [MESSAGES CONTROL]
-disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
+disable=missing-module-docstring,missing-class-docstring,missing-function-docstring,broad-exception-caught
 
 [REPORTS]
 fail-under=8.0

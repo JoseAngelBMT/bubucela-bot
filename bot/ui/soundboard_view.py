@@ -1,10 +1,14 @@
+import logging
 import os
 
 import discord
 from discord import ButtonStyle
 from discord.ui import View
 
+from bot.services.audio_mixer import AudioMixer
 from bot.utils.constants import SOUNDS_PER_PAGE
+
+logger = logging.getLogger(__name__)
 
 
 class SoundboardView(View):
@@ -12,11 +16,14 @@ class SoundboardView(View):
 
     sounds_per_page: int = SOUNDS_PER_PAGE
 
-    def __init__(self, sounds: dict, mode: str = "play", multi_select: bool = False) -> None:
+    def __init__(self, sounds: dict, mode: str = "play", multi_select: bool = False,
+                 sound_modification_service=None, bot=None) -> None:
         super().__init__(timeout=None)
         self.sounds = sounds
         self.mode = mode
         self.multi_select = multi_select
+        self.sound_modification_service = sound_modification_service
+        self.bot = bot
         self.page = 0
         self.total_pages = (len(sounds) - 1) // self.sounds_per_page
         self.selected_sounds = set()
@@ -64,6 +71,11 @@ class SoundboardView(View):
             confirm_button.callback = self.confirm_selection
             self.add_item(confirm_button)
 
+        if self.mode == "play":
+            stop_button = discord.ui.Button(label="⏹ STOP", style=ButtonStyle.danger)
+            stop_button.callback = self.stop_all
+            self.add_item(stop_button)
+
     async def noop(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
@@ -81,39 +93,60 @@ class SoundboardView(View):
     def create_callback(self, sound_name: str):
         async def callback(interaction: discord.Interaction):
             if self.mode == "play":
-                if interaction.guild.voice_client is None:
+                vc = interaction.guild.voice_client
+                if vc is None:
                     if interaction.user.voice and interaction.user.voice.channel:
-                        channel = interaction.user.voice.channel
-                        await channel.connect()
+                        vc = await interaction.user.voice.channel.connect()
+                    else:
+                        await interaction.response.send_message("You are not in a voice channel.", ephemeral=True)
+                        return
 
                 sound_path = self.sounds.get(sound_name)
                 if not sound_path:
                     await interaction.response.send_message("Sound does not exist.", ephemeral=True)
                     return
 
-                if not interaction.guild.voice_client:
-                    if interaction.user.voice:
-                        channel = interaction.user.voice.channel
-                        await channel.connect()
+                source = discord.FFmpegPCMAudio(sound_path, executable="ffmpeg")
+
+                if self.bot is not None:
+                    # --- Overlapping playback via AudioMixer ---
+                    if vc.is_playing():
+                        mixer = self.bot.get_mixer(interaction.guild.id)
                     else:
-                        await interaction.response.send_message("You are not in a voice channel.", ephemeral=True)
+                        mixer = self.bot.replace_mixer(interaction.guild.id)
+
+                    if not mixer.add_source(source):
+                        await interaction.response.send_message(
+                            f"Max `{AudioMixer.MAX_SOURCES}` simultaneous sounds reached.", ephemeral=True
+                        )
                         return
 
-                source = discord.FFmpegPCMAudio(sound_path)
-                if not interaction.guild.voice_client.is_playing():
-                    interaction.guild.voice_client.play(source)
+                    if not vc.is_playing():
+                        def after_mixer(error):
+                            if error:
+                                logger.error(f"[soundboard mixer] Playback error: {error}")
+                            self.bot.guild_mixers.pop(interaction.guild.id, None)
+
+                        vc.play(mixer, after=after_mixer)
                 else:
-                    interaction.guild.voice_client.stop()
-                    interaction.guild.voice_client.play(source)
+                    # Fallback: single sound (no bot reference)
+                    if vc.is_playing():
+                        vc.stop()
+                    vc.play(source)
+
                 await interaction.response.defer()
             elif self.mode == "delete":
                 sound_path = self.sounds.get(sound_name)
                 if sound_path and os.path.exists(sound_path):
                     os.remove(sound_path)
-                    await interaction.response.send_message(f"Removed sound {sound_name}.", ephemeral=True)
+                    if self.sound_modification_service:
+                        self.sound_modification_service.clear_sound_tracking(sound_name)
+                    await interaction.response.send_message(f"Removed sound `{sound_name}`.", ephemeral=True)
                 else:
-                    interaction.response.send_message(f"Sound {sound_name} does not exist or already eliminated.",
-                                                      ephemeral=True)
+                    await interaction.response.send_message(
+                        f"Sound `{sound_name}` does not exist or already eliminated.",
+                        ephemeral=True,
+                    )
             elif self.mode == "select":
                 if self.multi_select:
                     if sound_name in self.selected_sounds:
@@ -130,6 +163,16 @@ class SoundboardView(View):
     async def confirm_selection(self, interaction: discord.Interaction):
         await interaction.response.defer()
         self.stop()
+
+    async def stop_all(self, interaction: discord.Interaction):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            vc.stop()
+            if self.bot is not None:
+                self.bot.guild_mixers.pop(interaction.guild.id, None)
+            await interaction.response.defer()
+        else:
+            await interaction.response.send_message("Nothing is playing.", ephemeral=True)
 
     def get_selected_sounds(self) -> list:
         return list(self.selected_sounds)

@@ -23,7 +23,7 @@ def register_user_sounds_commands(tree: app_commands.CommandTree, bot) -> None:
         await interaction.delete_original_response()
         if selected:
             UserSoundService.save_user_sound(str(interaction.user.id), selected[0])
-            await interaction.followup.send(f"Set {selected[0]} sound as personal", ephemeral=True)
+            await interaction.followup.send(f"Set `{selected[0]}` sound as personal", ephemeral=True)
         else:
             await interaction.followup.send("No sound selected.", ephemeral=True)
 

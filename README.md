@@ -43,6 +43,8 @@ All commands use Discord's modern slash command interface:
 | `/play <sound_name>` | Play a specific sound by name |
 | `/stop` | Stop the currently playing sound |
 | `/soundboard` | Open the interactive soundboard UI |
+| `/modify_volume <volume>` | Select one sound and apply non-destructive volume change |
+| `/restore` | Show only modified sounds and restore selected ones from backup |
 | `/upload <file> [name] [start] [end]` | Upload an audio file with optional trimming |
 | `/upload_youtube <url> <name> [start] [end]` | Extract audio from YouTube video |
 | `/delete` | Delete sounds from the library via UI |

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 import discord
@@ -22,11 +23,11 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
 
         if attachment.size / (1024 * 1024) > settings.max_file_size_mb:
             await interaction.response.send_message(
-                f"File exceeds max size of {settings.max_file_size_mb} MB.", ephemeral=True)
+                f"File exceeds max size of `{settings.max_file_size_mb}` MB.", ephemeral=True)
             return
 
         if not attachment.filename.lower().endswith(tuple(SOUND_FORMATS)):
-            await interaction.response.send_message(f"Unsupported format {SOUND_FORMATS}", ephemeral=True)
+            await interaction.response.send_message(f"Unsupported format `{SOUND_FORMATS}`", ephemeral=True)
             return
 
         if sound_name:
@@ -34,12 +35,15 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
             save_path = os.path.join(settings.sounds_dir, f"{sound_name}.{extension}")
         else:
             save_path = os.path.join(settings.sounds_dir, attachment.filename)
-        await attachment.save(save_path)
+
+        stored_sound_name = os.path.splitext(os.path.basename(save_path))[0]
+        bot.sound_modification_service.clear_sound_tracking(stored_sound_name)
+        await attachment.save(Path(save_path))
 
         if start_time is not None or end_time is not None:
             bot.audio_processor.cut_audio(save_path, start_time, end_time)
 
-        await interaction.response.send_message(f"Saved: {attachment.filename}", ephemeral=True)
+        await interaction.response.send_message(f"Saved: `{attachment.filename}`", ephemeral=True)
         bot.sound_manager.invalidate_cache()
 
     @tree.command(name="upload_youtube",
@@ -63,11 +67,12 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
 
             if sound_size / (1024 * 1024) > settings.max_file_size_mb:
                 await interaction.followup.send(
-                    f"File exceeds max size of {settings.max_file_size_mb} MB.", ephemeral=True)
+                    f"File exceeds max size of `{settings.max_file_size_mb}` MB.", ephemeral=True)
                 os.remove(sound_path)
                 return
 
-            await interaction.followup.send(f"Saved: {sound_name}", ephemeral=True)
+            await interaction.followup.send(f"Saved: `{sound_name}`", ephemeral=True)
+            bot.sound_modification_service.clear_sound_tracking(sound_name)
             bot.sound_manager.invalidate_cache()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            await interaction.followup.send(f"❌ Error downloading the sound {str(e)}", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ Error downloading the sound `{str(e)}`", ephemeral=True)
