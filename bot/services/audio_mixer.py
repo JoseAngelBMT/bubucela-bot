@@ -63,7 +63,7 @@ class AudioMixer(discord.AudioSource):
                 self._sources.remove(s)
                 try:
                     s.cleanup()
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     pass
 
             if not buffers:
@@ -90,7 +90,7 @@ class AudioMixer(discord.AudioSource):
             for source in self._sources:
                 try:
                     source.cleanup()
-                except Exception:  # pylint: disable=broad-exception-caught
+                except Exception:
                     pass
             self._sources.clear()
 

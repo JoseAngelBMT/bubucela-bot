@@ -13,3 +13,9 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "yt-dlp==2026.1.29",
 ]
+
+[dependency-groups]
+dev = [
+    "pylint>=3.3.0",
+]
+

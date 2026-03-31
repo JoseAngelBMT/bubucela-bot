@@ -74,5 +74,5 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
             await interaction.followup.send(f"Saved: `{sound_name}`", ephemeral=True)
             bot.sound_modification_service.clear_sound_tracking(sound_name)
             bot.sound_manager.invalidate_cache()
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             await interaction.followup.send(f"❌ Error downloading the sound `{str(e)}`", ephemeral=True)

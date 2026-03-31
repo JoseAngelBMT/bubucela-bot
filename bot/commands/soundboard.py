@@ -91,7 +91,7 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
                 f"Updated `{sound_name}` volume to `{volume}%` (backup saved).",
                 ephemeral=True,
             )
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        except Exception as error:
             await interaction.followup.send(f"Error modifying volume: `{error}`", ephemeral=True)
 
     @tree.command(name="restore", description="Restore modified sounds from backup")
@@ -176,7 +176,7 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
                 vc.stop()
             vc.play(source, after=after_play)
             await interaction.followup.send("▶️ Playing YouTube audio...", ephemeral=True)
-        except Exception as error:  # pylint: disable=broad-exception-caught
+        except Exception as error:
             logger.error(f"[/play_youtube] Error: {error}")
             try:
                 os.rmdir(tmp_dir)
