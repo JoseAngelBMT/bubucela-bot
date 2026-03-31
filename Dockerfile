@@ -2,23 +2,23 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-# Instalar dependencias del sistema
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsodium-dev \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar archivos de dependencias
+# Copy dependency files
 COPY pyproject.toml uv.lock* ./
 
-# Sincronizar dependencias (uv ya está instalado)
+# Synchronize dependencies (uv is already installed)
 RUN uv sync --frozen --no-dev
 
-# Copiar código
+# Copy code
 COPY . .
 
-# Variables de entorno para usar el venv
+# Environment variables to use the venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 CMD ["python", "-m", "bot.main"]

@@ -11,27 +11,27 @@ def set_logger():
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {
-            "estandar": {
+            "standard": {
                 "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
             },
         },
         "handlers": {
-            "consola": {
+            "console": {
                 "class": "logging.StreamHandler",
                 "level": "INFO",
-                "formatter": "estandar",
+                "formatter": "standard",
             },
-            "archivo": {
+            "file": {
                 "class": "logging.handlers.RotatingFileHandler",
                 "level": "DEBUG",
-                "formatter": "estandar",
+                "formatter": "standard",
                 "filename": "app.log",
                 "maxBytes": 10485760, # 10MB
                 "backupCount": 3,
             },
         },
         "root": {
-            "handlers": ["consola", "archivo"],
+            "handlers": ["console", "file"],
             "level": "DEBUG",
         },
     }

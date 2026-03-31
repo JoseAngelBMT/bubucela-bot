@@ -45,8 +45,8 @@ class SoundManager:
         for sound in os.listdir(self.sounds_dir):
             root = os.path.join(self.sounds_dir, sound)
             if os.path.isfile(root):
-                nombre_sin_extension, _ = os.path.splitext(sound)
-                sound_dict[nombre_sin_extension] = root
+                name_without_extension, _ = os.path.splitext(sound)
+                sound_dict[name_without_extension] = root
         self._cached_sounds = sound_dict
         return sound_dict
 
