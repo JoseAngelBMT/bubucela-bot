@@ -10,5 +10,8 @@ USER_SOUNDS_JSON_PATH = "/static/user_sounds.json"
 MODIFIED_SOUNDS_JSON_PATH = "static/modified_sounds.json"
 MODIFIED_SOUNDS_BACKUP_DIR = "static/backups"
 
+# Sound groups metadata
+SOUND_GROUPS_JSON_PATH = "static/sound_groups.json"
+
 # Soundboard configuration
 SOUNDS_PER_PAGE = 20

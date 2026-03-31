@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands, tasks
 
 from bot.commands.delete import register_delete_commands
+from bot.commands.sound_groups import register_sound_groups_commands
 from bot.commands.soundboard import register_soundboard_commands
 from bot.commands.upload import register_upload_commands
 from bot.commands.user_sounds import register_user_sounds_commands
@@ -90,11 +91,17 @@ class DiscordBot(commands.Bot):
                 source = discord.FFmpegPCMAudio(sound_path)
                 voice_client.play(source)
 
-    async def cleanup_soundboard_messages(self, channel: discord.TextChannel) -> None:
-        """Delete all previous soundboard messages from the bot in the channel."""
+    async def cleanup_soundboard_messages(self, channel: discord.TextChannel, board_type: str = "general") -> None:
+        """Delete previous soundboard messages of the requested type from the bot in the channel."""
         try:
             async for message in channel.history(limit=100):
-                if message.author == self.user and message.content == "Soundboard activated:" and message.components:
+                is_general_board = message.content == "Soundboard activated:"
+                is_group_board = message.content.startswith("Soundboard activated (group:")
+                should_delete = (board_type == "general" and is_general_board) or (
+                    board_type == "group" and is_group_board
+                )
+
+                if message.author == self.user and should_delete and message.components:
                     try:
                         await message.delete()
                     except discord.errors.NotFound:
@@ -117,6 +124,7 @@ class DiscordBot(commands.Bot):
         """Register all bot commands."""
         register_voice_commands(self.tree)
         register_soundboard_commands(self.tree, self)
+        register_sound_groups_commands(self.tree, self)
         register_upload_commands(self.tree, self)
         register_delete_commands(self.tree, self)
         register_user_sounds_commands(self.tree, self)
