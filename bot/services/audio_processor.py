@@ -33,7 +33,8 @@ class AudioProcessor:
         cut_audio.export(save_path, format=save_path.rsplit('.', 1)[-1])
 
     def download_youtube_audio(self, url: str, sound_name: str, start_time: Optional[str],
-                               end_time: Optional[str], extension: str = "opus") -> str:
+                               end_time: Optional[str], extension: str = "opus",
+                               output_dir: Optional[str] = None) -> str:
         """
         Download audio from YouTube video.
         
@@ -43,13 +44,15 @@ class AudioProcessor:
             start_time: Start time for extraction (hh:mm:ss, mm:ss or ss)
             end_time: End time for extraction (hh:mm:ss, mm:ss or ss)
             extension: Audio format extension
-            
+            output_dir: Directory to save the file (defaults to sounds_dir)
+
         Returns:
             Path to the downloaded audio file
         """
+        dest_dir = output_dir or self.sounds_dir
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": os.path.join(self.sounds_dir, f"{sound_name}.%(ext)s"),
+            "outtmpl": os.path.join(dest_dir, f"{sound_name}.%(ext)s"),
             "download_ranges": lambda info_dict, yt_instance: [
                 {'start_time': time_to_seconds(start_time) if start_time else 0,
                  'end_time': time_to_seconds(end_time) if end_time else 1e6,
@@ -67,7 +70,7 @@ class AudioProcessor:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return os.path.join(self.sounds_dir, f"{sound_name}.{extension}")
+        return os.path.join(dest_dir, f"{sound_name}.{extension}")
 
     def apply_volume(self, output_path: str, volume_percentage: int, source_path: Optional[str] = None) -> None:
         """Apply absolute volume percentage and export to output path.

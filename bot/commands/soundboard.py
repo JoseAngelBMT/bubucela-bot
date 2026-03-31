@@ -1,5 +1,8 @@
 import asyncio
 import logging
+import os
+import tempfile
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -133,4 +136,55 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
                 f"Could not restore: {', '.join(failed)}",
                 ephemeral=True,
             )
+
+    @tree.command(name="play_youtube", description="Play audio from a YouTube video without saving it")
+    @app_commands.describe(
+        youtube_url="YouTube video URL",
+        start_time="Start time (hh:mm:ss, mm:ss or ss)",
+        end_time="End time (hh:mm:ss, mm:ss or ss)",
+        volume="Volume % of the sound",
+    )
+    async def play_youtube(interaction: discord.Interaction, youtube_url: str,
+                           start_time: Optional[str] = None, end_time: Optional[str] = None,
+                           volume: int = 100) -> None:
+        if not interaction.guild.voice_client:
+            if interaction.user.voice:
+                channel = interaction.user.voice.channel
+                await channel.connect()
+            else:
+                await interaction.response.send_message("You're not connected to a voice channel.", ephemeral=True)
+                return
+
+        await interaction.response.defer(ephemeral=True)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            sound_path = await asyncio.to_thread(
+                bot.audio_processor.download_youtube_audio,
+                youtube_url, "play_tmp", start_time, end_time, "opus", tmp_dir,
+            )
+
+            def after_play(error):
+                if error:
+                    logger.error(f"[/play_youtube] Playback error: {error}")
+                try:
+                    os.remove(sound_path)
+                    os.rmdir(tmp_dir)
+                except OSError:
+                    pass
+
+            source = discord.FFmpegPCMAudio(
+                sound_path, executable="ffmpeg", options=f'-af "volume={volume / 100.0}"'
+            )
+            vc = interaction.guild.voice_client
+            if vc.is_playing():
+                vc.stop()
+            vc.play(source, after=after_play)
+            await interaction.followup.send("▶️ Playing YouTube audio...", ephemeral=True)
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            logger.error(f"[/play_youtube] Error: {error}")
+            try:
+                os.rmdir(tmp_dir)
+            except OSError:
+                pass
+            await interaction.followup.send(f"❌ Error: {error}", ephemeral=True)
 
