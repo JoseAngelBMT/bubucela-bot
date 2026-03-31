@@ -117,7 +117,7 @@ class SoundboardView(View):
 
                     if not mixer.add_source(source):
                         await interaction.response.send_message(
-                            f"Max {AudioMixer.MAX_SOURCES} simultaneous sounds reached.", ephemeral=True
+                            f"Max `{AudioMixer.MAX_SOURCES}` simultaneous sounds reached.", ephemeral=True
                         )
                         return
 
@@ -141,10 +141,10 @@ class SoundboardView(View):
                     os.remove(sound_path)
                     if self.sound_modification_service:
                         self.sound_modification_service.clear_sound_tracking(sound_name)
-                    await interaction.response.send_message(f"Removed sound {sound_name}.", ephemeral=True)
+                    await interaction.response.send_message(f"Removed sound `{sound_name}`.", ephemeral=True)
                 else:
                     await interaction.response.send_message(
-                        f"Sound {sound_name} does not exist or already eliminated.",
+                        f"Sound `{sound_name}` does not exist or already eliminated.",
                         ephemeral=True,
                     )
             elif self.mode == "select":

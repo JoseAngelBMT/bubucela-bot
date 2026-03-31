@@ -36,7 +36,7 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
         try:
             source = discord.FFmpegPCMAudio(sound_path, executable='ffmpeg', options=f'-af "volume={volume / 100.0}"')
             interaction.guild.voice_client.play(source)
-            await interaction.followup.send(f"Playing: {sound}", ephemeral=True)
+            await interaction.followup.send(f"Playing: `{sound}`", ephemeral=True)
         except (discord.errors.InteractionResponded, discord.errors.NotFound) as e:
             logger.error(f"[/play] Error playing the sound: {e}")
             await interaction.followup.send("Error playing the sound...", ephemeral=True)
@@ -88,11 +88,11 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
             bot.sound_modification_service.mark_modified(sound_name, sound_path)
             bot.sound_manager.invalidate_cache()
             await interaction.followup.send(
-                f"Updated `{sound_name}` volume to {volume}% (backup saved).",
+                f"Updated `{sound_name}` volume to `{volume}%` (backup saved).",
                 ephemeral=True,
             )
         except Exception as error:  # pylint: disable=broad-exception-caught
-            await interaction.followup.send(f"Error modifying volume: {error}", ephemeral=True)
+            await interaction.followup.send(f"Error modifying volume: `{error}`", ephemeral=True)
 
     @tree.command(name="restore", description="Restore modified sounds from backup")
     async def restore(interaction: discord.Interaction) -> None:
@@ -127,15 +127,11 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
         bot.sound_manager.invalidate_cache()
 
         if restored:
-            await interaction.followup.send(
-                f"Restored: {', '.join(restored)}",
-                ephemeral=True,
-            )
+            restored_text = ", ".join(f"`{name}`" for name in restored)
+            await interaction.followup.send(f"Restored: {restored_text}", ephemeral=True)
         if failed:
-            await interaction.followup.send(
-                f"Could not restore: {', '.join(failed)}",
-                ephemeral=True,
-            )
+            failed_text = ", ".join(f"`{name}`" for name in failed)
+            await interaction.followup.send(f"Could not restore: {failed_text}", ephemeral=True)
 
     @tree.command(name="play_youtube", description="Play audio from a YouTube video without saving it")
     @app_commands.describe(

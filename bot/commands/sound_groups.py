@@ -45,7 +45,7 @@ def register_sound_groups_commands(tree: app_commands.CommandTree, bot) -> None:
 
         SoundGroupService.save_group(group_name, selected)
         await interaction.followup.send(
-            f"Group `{group_name}` saved with {len(selected)} sounds.",
+            f"Group `{group_name}` saved with `{len(selected)}` sounds.",
             ephemeral=True,
         )
 
@@ -70,7 +70,7 @@ def register_sound_groups_commands(tree: app_commands.CommandTree, bot) -> None:
         await bot.cleanup_soundboard_messages(interaction.channel, board_type="group")
 
         view = SoundboardView(group_sounds, bot=bot)
-        await interaction.response.send_message(f"Soundboard activated (group: {group_name}):", view=view)
+        await interaction.response.send_message(f"Soundboard activated (group: `{group_name}`):", view=view)
 
     @tree.command(name="group_delete", description="Delete a sound group")
     @app_commands.autocomplete(group_name=group_name_autocomplete)
@@ -87,7 +87,7 @@ def register_sound_groups_commands(tree: app_commands.CommandTree, bot) -> None:
             await interaction.response.send_message("No groups found.", ephemeral=True)
             return
 
-        lines = [f"- {group_name} ({len(sound_names)} sounds)" for group_name, sound_names in sorted(groups.items())]
+        lines = [f"- `{group_name}` (`{len(sound_names)}` sounds)" for group_name, sound_names in sorted(groups.items())]
         await interaction.response.send_message("\n".join(lines), ephemeral=True)
 
 
