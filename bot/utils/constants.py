@@ -7,4 +7,4 @@ SOUND_FORMATS = [".mp3", ".wav", ".ogg", ".opus"]
 USER_SOUNDS_JSON_PATH = "/static/user_sounds.json"
 
 # Soundboard configuration
-SOUNDS_PER_PAGE = 30
+SOUNDS_PER_PAGE = 20

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import discord
@@ -39,7 +40,7 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
 
     @tree.command(name="soundboard", description="Open a soundboard")
     async def soundboard(interaction: discord.Interaction) -> None:
-        sounds = bot.sound_manager.get_sounds_dict()
+        sounds = await asyncio.to_thread(bot.sound_manager.get_sounds_dict)
         if not sounds:
             await interaction.response.send_message("No sounds found.", ephemeral=True)
             return

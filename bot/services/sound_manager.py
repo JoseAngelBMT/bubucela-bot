@@ -42,11 +42,11 @@ class SoundManager:
             raise ValueError(f"Path is not valid: {self.sounds_dir}")
 
         sound_dict = {}
-        for sound in os.listdir(self.sounds_dir):
-            root = os.path.join(self.sounds_dir, sound)
-            if os.path.isfile(root):
-                name_without_extension, _ = os.path.splitext(sound)
-                sound_dict[name_without_extension] = root
+        files = [f for f in os.listdir(self.sounds_dir) if os.path.isfile(os.path.join(self.sounds_dir, f))]
+        sorted_files = sorted(files, key=lambda f: os.path.getmtime(os.path.join(self.sounds_dir, f)))
+        for sound in sorted_files:
+            name_without_extension, _ = os.path.splitext(sound)
+            sound_dict[name_without_extension] = os.path.join(self.sounds_dir, sound)
         self._cached_sounds = sound_dict
         return sound_dict
 
