@@ -54,8 +54,8 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
         await interaction.response.send_message("Soundboard activated:", view=view)
 
     @tree.command(name="modify_volume", description="Modify a sound volume and keep a backup")
-    @app_commands.describe(volume="Target volume percentage (0-200)")
-    async def modify_volume(interaction: discord.Interaction, volume: app_commands.Range[int, 0, 200]) -> None:
+    @app_commands.describe(volume="Target volume percentage (0-500)")
+    async def modify_volume(interaction: discord.Interaction, volume: app_commands.Range[int, 0, 500]) -> None:
         sounds = bot.sound_manager.get_sounds_dict()
         if not sounds:
             await interaction.response.send_message("No sounds found.", ephemeral=True)
