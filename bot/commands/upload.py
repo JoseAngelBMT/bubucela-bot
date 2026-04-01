@@ -13,6 +13,10 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
     """Register upload-related commands."""
 
     @tree.command(name="upload", description="Upload a sound file (optional: give a name")
+    @app_commands.describe(
+        start_time="Start time (hh:mm:ss, mm:ss or ss; decimals allowed)",
+        end_time="End time (hh:mm:ss, mm:ss or ss; decimals allowed)",
+    )
     async def upload(interaction: discord.Interaction, attachment: discord.Attachment,
                      sound_name: Optional[str] = None, start_time: Optional[str] = None,
                      end_time: Optional[str] = None) -> None:
@@ -49,8 +53,8 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
     @tree.command(name="upload_youtube",
                   description="Upload a sound file from a YouTube video")
     @app_commands.describe(
-        start_time="Start time (hh:mm:ss, mm:ss or ss)",
-        end_time="End time (hh:mm:ss, mm:ss or ss)"
+        start_time="Start time (hh:mm:ss, mm:ss or ss; decimals allowed)",
+        end_time="End time (hh:mm:ss, mm:ss or ss; decimals allowed)"
     )
     async def upload_youtube(interaction: discord.Interaction, youtube_url: str,
                              sound_name: str, start_time: Optional[str] = None,
