@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 
 import discord
 from discord import ButtonStyle
@@ -72,6 +73,10 @@ class SoundboardView(View):
             self.add_item(confirm_button)
 
         if self.mode == "play":
+            random_button = discord.ui.Button(label="🎲 Random", style=ButtonStyle.primary)
+            random_button.callback = self.play_random
+            self.add_item(random_button)
+
             stop_button = discord.ui.Button(label="⏹ STOP", style=ButtonStyle.danger)
             stop_button.callback = self.stop_all
             self.add_item(stop_button)
@@ -163,6 +168,13 @@ class SoundboardView(View):
     async def confirm_selection(self, interaction: discord.Interaction):
         await interaction.response.defer()
         self.stop()
+
+    async def play_random(self, interaction: discord.Interaction):
+        if not self.sounds:
+            await interaction.response.send_message("No sounds available.", ephemeral=True)
+            return
+        sound_name = random.choice(list(self.sounds.keys()))
+        await self.create_callback(sound_name)(interaction)
 
     async def stop_all(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
