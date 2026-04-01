@@ -7,6 +7,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 
+from bot.services.sound_group_service import SoundGroupService
 from bot.ui.soundboard_view import SoundboardView
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,17 @@ logger = logging.getLogger(__name__)
 
 def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
     """Register soundboard-related commands."""
+
+    async def group_name_autocomplete(
+        interaction: discord.Interaction, current: str
+    ) -> list[app_commands.Choice[str]]:
+        _ = interaction
+        groups = SoundGroupService.list_groups()
+        return [
+            app_commands.Choice(name=group_name, value=group_name)
+            for group_name in groups
+            if current.lower() in group_name.lower()
+        ][:25]
 
     @tree.command(name="play", description="Play a saved sound")
     @app_commands.describe(
@@ -41,17 +53,39 @@ def register_soundboard_commands(tree: app_commands.CommandTree, bot) -> None:
             logger.error(f"[/play] Error playing the sound: {e}")
             await interaction.followup.send("Error playing the sound...", ephemeral=True)
 
-    @tree.command(name="soundboard", description="Open a soundboard")
-    async def soundboard(interaction: discord.Interaction) -> None:
+    @tree.command(name="soundboard", description="Open the global soundboard or one group")
+    @app_commands.describe(group_name="Optional group name to open only that group's sounds")
+    @app_commands.autocomplete(group_name=group_name_autocomplete)
+    async def soundboard(interaction: discord.Interaction, group_name: Optional[str] = None) -> None:
         sounds = await asyncio.to_thread(bot.sound_manager.get_sounds_dict)
         if not sounds:
             await interaction.response.send_message("No sounds found.", ephemeral=True)
             return
 
-        await bot.cleanup_soundboard_messages(interaction.channel, board_type="general")
+        if group_name:
+            groups = SoundGroupService.load_groups()
+            selected_group = groups.get(group_name)
+            if not selected_group:
+                await interaction.response.send_message(f"Group `{group_name}` not found.", ephemeral=True)
+                return
 
-        view = SoundboardView(sounds, bot=bot)
-        await interaction.response.send_message("Soundboard activated:", view=view)
+            board_sounds = {name: sounds[name] for name in selected_group if name in sounds}
+            if not board_sounds:
+                await interaction.response.send_message(
+                    f"Group `{group_name}` has no available sounds.",
+                    ephemeral=True,
+                )
+                return
+
+            board_title = f"Soundboard activated (group: `{group_name}`):"
+            await bot.cleanup_soundboard_messages(interaction.channel, board_key=f"group:{group_name}")
+        else:
+            board_sounds = sounds
+            board_title = "Soundboard activated:"
+            await bot.cleanup_soundboard_messages(interaction.channel, board_key="general")
+
+        view = SoundboardView(board_sounds, bot=bot)
+        await interaction.response.send_message(board_title, view=view)
 
     @tree.command(name="modify_volume", description="Modify a sound volume and keep a backup")
     @app_commands.describe(volume="Target volume percentage (0-500)")
