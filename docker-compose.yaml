@@ -5,5 +5,7 @@ services:
     container_name: bubucela
     restart: unless-stopped
     env_file: .env
+    environment:
+      STATIC_DIR: /static
     volumes:
       - ./static:/static
