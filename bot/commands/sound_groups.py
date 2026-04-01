@@ -49,9 +49,9 @@ def register_sound_groups_commands(tree: app_commands.CommandTree, bot) -> None:
             ephemeral=True,
         )
 
-    @tree.command(name="group_soundboard", description="Open a group soundboard")
+    @tree.command(name="group_add", description="Add sounds to an existing sound group")
     @app_commands.autocomplete(group_name=group_name_autocomplete)
-    async def group_soundboard(interaction: discord.Interaction, group_name: str) -> None:
+    async def group_add(interaction: discord.Interaction, group_name: str) -> None:
         groups = SoundGroupService.load_groups()
         selected_group = groups.get(group_name)
         if not selected_group:
@@ -59,18 +59,43 @@ def register_sound_groups_commands(tree: app_commands.CommandTree, bot) -> None:
             return
 
         sounds = await asyncio.to_thread(bot.sound_manager.get_sounds_dict)
-        group_sounds = {name: sounds[name] for name in selected_group if name in sounds}
-        if not group_sounds:
+        existing_sounds = set(selected_group)
+        available_sounds = {
+            sound_name: sound_path
+            for sound_name, sound_path in sounds.items()
+            if sound_name not in existing_sounds
+        }
+        if not available_sounds:
             await interaction.response.send_message(
-                f"Group `{group_name}` has no available sounds.",
+                f"Group `{group_name}` already contains all available sounds.",
                 ephemeral=True,
             )
             return
 
-        await bot.cleanup_soundboard_messages(interaction.channel, board_type="group")
+        view = SoundboardView(available_sounds, mode="select", multi_select=True)
+        await interaction.response.send_message(
+            f"Select sounds to add to group `{group_name}`:",
+            view=view,
+            ephemeral=True,
+        )
 
-        view = SoundboardView(group_sounds, bot=bot)
-        await interaction.response.send_message(f"Soundboard activated (group: `{group_name}`):", view=view)
+        await view.wait()
+        selected = sorted(view.get_selected_sounds())
+        await interaction.delete_original_response()
+
+        if not selected:
+            await interaction.followup.send("No sounds selected.", ephemeral=True)
+            return
+
+        exists, added = SoundGroupService.add_sounds_to_group(group_name, selected)
+        if not exists:
+            await interaction.followup.send(f"Group `{group_name}` not found.", ephemeral=True)
+            return
+
+        await interaction.followup.send(
+            f"Added `{added}` sounds to `{group_name}`.",
+            ephemeral=True,
+        )
 
     @tree.command(name="group_delete", description="Delete a sound group")
     @app_commands.autocomplete(group_name=group_name_autocomplete)

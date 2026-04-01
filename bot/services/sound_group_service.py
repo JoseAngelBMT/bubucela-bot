@@ -30,6 +30,27 @@ class SoundGroupService:
         SoundGroupService._write_groups(groups)
 
     @staticmethod
+    def add_sounds_to_group(group_name: str, sound_names: list[str]) -> tuple[bool, int]:
+        """Add sounds to an existing group without replacing existing entries."""
+        groups = SoundGroupService.load_groups()
+        if group_name not in groups:
+            return False, 0
+
+        existing_sounds = groups[group_name]
+        existing_set = set(existing_sounds)
+        added = 0
+
+        for sound_name in sound_names:
+            if sound_name not in existing_set:
+                existing_sounds.append(sound_name)
+                existing_set.add(sound_name)
+                added += 1
+
+        groups[group_name] = existing_sounds
+        SoundGroupService._write_groups(groups)
+        return True, added
+
+    @staticmethod
     def delete_group(group_name: str) -> bool:
         groups = SoundGroupService.load_groups()
         if group_name not in groups:

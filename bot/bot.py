@@ -91,17 +91,19 @@ class DiscordBot(commands.Bot):
                 source = discord.FFmpegPCMAudio(sound_path)
                 voice_client.play(source)
 
-    async def cleanup_soundboard_messages(self, channel: discord.TextChannel, board_type: str = "general") -> None:
-        """Delete previous soundboard messages of the requested type from the bot in the channel."""
+    async def cleanup_soundboard_messages(self, channel: discord.TextChannel, board_key: str = "general") -> None:
+        """Delete previous soundboard messages for one context (general or one specific group)."""
+        if board_key == "general":
+            target_content = "Soundboard activated:"
+        elif board_key.startswith("group:"):
+            group_name = board_key.split(":", 1)[1]
+            target_content = f"Soundboard activated (group: `{group_name}`):"
+        else:
+            return
+
         try:
             async for message in channel.history(limit=100):
-                is_general_board = message.content == "Soundboard activated:"
-                is_group_board = message.content.startswith("Soundboard activated (group:")
-                should_delete = (board_type == "general" and is_general_board) or (
-                    board_type == "group" and is_group_board
-                )
-
-                if message.author == self.user and should_delete and message.components:
+                if message.author == self.user and message.content == target_content and message.components:
                     try:
                         await message.delete()
                     except discord.errors.NotFound:
