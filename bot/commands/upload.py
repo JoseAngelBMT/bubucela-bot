@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 from typing import Optional
@@ -66,7 +67,8 @@ def register_upload_commands(tree: app_commands.CommandTree, bot) -> None:
 
         await interaction.response.defer(ephemeral=True)
         try:
-            sound_path = bot.audio_processor.download_youtube_audio(youtube_url, sound_name, start_time, end_time)
+            sound_path = await asyncio.to_thread(
+                bot.audio_processor.download_youtube_audio, youtube_url, sound_name, start_time, end_time)
             sound_size = bot.sound_manager.sound_size(sound_name)
 
             if sound_size / (1024 * 1024) > settings.max_file_size_mb:

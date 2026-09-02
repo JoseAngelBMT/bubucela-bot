@@ -59,6 +59,12 @@ class AudioProcessor:
                  'title': 'first_section'},
             ],
             "force_keyframes_at_cuts": True,
+            "noplaylist": True,
+            "playlist_items": "1",
+            "socket_timeout": 30,
+            "retries": 2,
+            "extractor_retries": 2,
+            "file_access_retries": 2,
             "postprocessors": [{
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": extension,
